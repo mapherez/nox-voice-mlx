@@ -59,9 +59,11 @@ Real-time voice conversation AI running on Apple Silicon. A port of NVIDIA's Per
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/personaplex-mlx.git
+git clone --recursive https://github.com/Acelogic/personaplex-mlx.git
 cd personaplex-mlx
 ```
+
+> **Note:** The `--recursive` flag clones the [NVIDIA PersonaPlex](https://github.com/NVIDIA/personaplex) submodule (PyTorch reference code).
 
 ### 2. Install dependencies with uv
 
@@ -150,7 +152,7 @@ personaplex-mlx/
 │   ├── model.safetensors
 │   ├── tokenizer*.safetensors
 │   └── voices_cpu/*.pt
-├── personaplex/            # Original PyTorch reference
+├── personaplex/            # Git submodule → NVIDIA/personaplex
 └── personaplex_mlx/        # MLX model config
 ```
 
