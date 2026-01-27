@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+.installed.cfg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Weights (too large for git)
+weights/*.safetensors
+weights/*.pt
+weights/voices_cpu/
+
+# Keep config
+!weights/config.json
+
+# Logs
+*.log
+nohup.out
+
+# Testing artifacts
+test_*.wav
+test_*.json
