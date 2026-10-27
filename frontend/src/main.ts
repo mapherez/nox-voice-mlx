@@ -61,6 +61,7 @@ const audio = new ConversationAudio(
     text("latency", stats.avg_latency_ms.toFixed(0));
     text("rtf", `${stats.rtf.toFixed(2)}×`);
   },
+  notify,
 );
 
 function readTheme(): Theme {

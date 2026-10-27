@@ -1,4 +1,5 @@
 import captureUrl from "./capture-worklet.ts?worker&url";
+import { requestMicrophone } from "./microphone";
 
 export type AudioStats = {
   type: "stats";
@@ -26,6 +27,7 @@ export class ConversationAudio {
   constructor(
     private onEnd: (message: string) => void,
     private onStats: (stats: AudioStats) => void,
+    private onProgress: (message: string) => void = () => {},
   ) {}
   get active(): boolean {
     return this.stream !== null && this.socket?.readyState === WebSocket.OPEN;
@@ -48,11 +50,27 @@ export class ConversationAudio {
     this.starting = true;
     const generation = ++this.generation;
     try {
-      // Resume directly from the click gesture, including on Safari/iOS.
+      this.onProgress(
+        "Allow microphone access to start talking. If no prompt appears, check this site's microphone permissions in your browser.",
+      );
+      // Start both browser requests from the click, before awaiting any network activity.
       const context = new AudioContext();
       this.context = context;
-      await context.resume();
-      if (generation !== this.generation) return;
+      const resumed = context.resume();
+      const [stream] = await Promise.all([
+        requestMicrophone().then((stream) => {
+          // A permission prompt can resolve after Stop, logout or another start.
+          if (generation !== this.generation) {
+            stream.getTracks().forEach((track) => track.stop());
+            return null;
+          }
+          this.stream = stream;
+          return stream;
+        }),
+        resumed,
+      ]);
+      if (generation !== this.generation || !stream) return;
+      this.onProgress("Connecting to your voice engine…");
       const url = new URL("/ws", window.location.origin);
       url.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const socket = new WebSocket(url);
@@ -101,24 +119,6 @@ export class ConversationAudio {
         );
       });
       if (generation !== this.generation) return;
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-        video: false,
-      });
-      // Permission can resolve after Stop, logout, a network failure, or another start.
-      if (
-        generation !== this.generation ||
-        socket.readyState !== WebSocket.OPEN
-      ) {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-      this.stream = stream;
       await context.audioWorklet.addModule(captureUrl);
       if (generation !== this.generation) return;
       this.analyser = context.createAnalyser();
@@ -206,8 +206,10 @@ export class ConversationAudio {
           );
         }
       };
+      this.onProgress("");
     } catch (error) {
-      if (generation === this.generation) this.stop();
+      if (generation !== this.generation) return;
+      this.stop();
       throw error;
     } finally {
       if (generation === this.generation) this.starting = false;
