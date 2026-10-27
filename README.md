@@ -33,12 +33,11 @@ the gateway to control the Mac. Only one conversation runs at a time.
 
 ## First installation
 
-1. Follow [Mac setup](docs/mac-setup.md) to install the native components, accept
-   the model terms, prepare the weights and generate certificates.
-2. Follow [homelab deployment](docs/deployment.md) to configure Google login,
-   install the gateway's client certificates and connect Cloudflare Tunnel.
-3. Start the controller on the Mac. Sign in to the webapp, open **Settings →
-   Engine → Start engine**, wait for **Ready**, then start a conversation.
+**Follow [Start here: Mac → image → homelab → browser](docs/getting-started.md).**
+It is the single, ordered first-install guide, with commands labeled by machine
+and a checkpoint after each stage. Start on the Mac Studio. The frontend comes
+inside the Docker image; you do not install it separately or run npm for normal
+use. The other documents provide reference details after the first installation.
 
 The current port defaults are **8443** for the new HTTPS controller, **8000** for
 the private loopback worker, and **8080** inside the webapp container. The Mac

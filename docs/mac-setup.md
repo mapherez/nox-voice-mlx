@@ -1,5 +1,8 @@
 # Native Mac setup
 
+For your first installation, follow the complete, ordered [Start here guide](getting-started.md).
+This document is the Mac reference for advanced settings and maintenance.
+
 The controller and engine run natively on Apple Silicon, outside Docker. The
 controller stays lightweight; only its child worker loads model libraries and
 weights. Use native ARM64 Python 3.12, not Rosetta Python.

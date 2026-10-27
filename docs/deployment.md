@@ -1,5 +1,8 @@
 # Homelab deployment
 
+For your first installation, follow the complete, ordered [Start here guide](getting-started.md).
+This document is the deployment reference for updates and alternative arrangements.
+
 The published image contains the compiled frontend and its Python gateway. It
 does not contain the Mac engine, model weights or credentials.
 
@@ -64,13 +67,15 @@ The webapp runs as UID/GID **10001**. On Linux, ensure the secret files are
 readable by that UID and otherwise private. For a dedicated secrets directory:
 
 ```sh
-sudo chown -R 10001:10001 secrets
-sudo chmod 700 secrets
-sudo chmod 600 secrets/*
+chmod 700 secrets
+chmod 600 secrets/*
+sudo chown 10001:10001 secrets/*
 chmod 600 .env
 ```
 
 These ownership commands apply only to the deployment's dedicated directory.
+Keep the directory itself owned by your deployment user; only the individually
+mounted secret files need UID 10001 ownership.
 Local Compose secret mounts can preserve host ownership, so declarations of
 `mode` in Compose alone are not a substitute for correct file permissions.
 
