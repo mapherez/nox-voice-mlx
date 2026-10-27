@@ -22,8 +22,10 @@ RUN uv sync --frozen --no-dev \
     && useradd --uid 10001 --gid 10001 --no-create-home noxvoice \
     && mkdir /data && chown 10001:10001 /data
 COPY --from=frontend /build/dist /app/frontend/dist
-USER 10001:10001
+# The bootstrap copies mounted secrets into /tmp, then switches to UID/GID 10001.
+# The HTTP server never runs as root. Host secret ownership is left untouched.
+USER 0:0
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
-ENTRYPOINT ["nox-voice-web"]
+ENTRYPOINT ["python", "-m", "nox_voice_gateway.bootstrap"]

@@ -36,6 +36,13 @@ audio resampling. Provider and model mocks do not replace real deployment tests.
 Dependency audits report known advisories at execution time, not a guarantee
 that all code is free of vulnerabilities.
 
+CI also builds the Linux Docker image and starts it with mode `600` secret files
+owned by a different host UID. It checks that the service becomes healthy, runs
+as UID/GID `10001` with no effective capabilities or supplementary groups, and
+leaves the host files unchanged. This check requires Docker and is skipped in
+the default local suite unless `NOX_VOICE_CONTAINER_TEST_IMAGE` selects a built
+test image.
+
 ## Native compatibility smoke test
 
 **Where:** repository root on an Apple Silicon Mac.

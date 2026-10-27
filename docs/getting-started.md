@@ -168,7 +168,7 @@ Create the secrets directory:
 
 ```sh
 umask 077
-mkdir -p secrets
+mkdir -p -m 700 secrets
 ```
 
 Securely transfer the three files from the Mac's client directory into it:
@@ -256,20 +256,11 @@ marks or JSON. Generate `session-secret` once and keep it during updates.
 | `google-client-secret`        | Authenticate the app's OAuth client to Google |
 | `session-secret`              | Sign temporary login-state cookies            |
 
-On a standard **Linux Docker host**, make the files readable by the container's
-group while keeping your deployment user as their owner:
-
-```sh
-chmod 700 secrets
-sudo chown "$(id -u):10001" secrets/*
-chmod 640 secrets/*
-chmod 600 .env
-```
-
-This applies to this deployment's dedicated `secrets/` directory. You retain
-read/write access; group `10001` has read access. Docker Desktop and rootless or
-user-mapped Docker installations can map host permissions differently; see the
-[deployment reference](deployment.md#secret-file-permissions) if access fails.
+Keep these files private and owned by your deployment user. There is no need to
+change them to UID/GID `10001`, run `chown`, or grant the container group access.
+At startup the image copies the five webapp secrets into private temporary memory
+and switches to UID/GID `10001` before starting the server. The source files are
+mounted read-only and retain their ownership and permissions.
 
 **Checkpoint:** the deployment directory contains exactly the required files:
 

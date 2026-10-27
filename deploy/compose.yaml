@@ -2,10 +2,13 @@ name: nox-voice
 services:
   webapp:
     image: ghcr.io/mapherez/nox-voice-mlx-webapp:${NOX_VOICE_IMAGE_TAG:-latest}
+    pull_policy: always
     restart: unless-stopped
     init: true
     read_only: true
     cap_drop: [ALL]
+    # Only the bootstrap uses these to read private mounts and drop privileges.
+    cap_add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID]
     security_opt: [no-new-privileges:true]
     tmpfs:
       - /tmp:size=32m,mode=1777

@@ -91,6 +91,13 @@ the real 7B checkpoint still requires the runtime acceptance procedure.
 
 ## Persistence and transport
 
+The Docker bootstrap reads only the five configured webapp secret inputs into a
+private tmpfs directory, without modifying their host mounts. It then removes
+supplementary groups, switches to UID/GID `10001`, validates the TLS files and
+executes the gateway. The HTTP server has no effective Linux capabilities and
+cannot regain privileges. Invalid local TLS inputs stop startup before the
+healthcheck can succeed; TLS peer identity is still checked on connection.
+
 Only sessions are stored in the Docker data volume. Native settings (including
 the chosen persona) and certificates are private local files. Technical events
 are held in a bounded in-memory buffer with fixed messages. No conversation

@@ -76,17 +76,27 @@ Compose uses files.
 
 ### Secret file permissions
 
-The image runs as UID/GID `10001`. On a standard Linux Docker host, the
-installation guide keeps the deployment user as owner, gives group `10001` read
-access with mode `640`, and keeps the parent directory private with mode `700`.
-The owner can still read and edit the files. Ownership is not transferred away
-from the operator.
+Keep the five webapp secret files owned by the deployment user and private
+(mode `600` is supported). No host `chown`, group mapping or manual permission
+repair is required for the supplied webapp service.
 
-Local Compose secret mounts can preserve host ownership. Docker Desktop file
-sharing, rootless Docker and user-namespace mappings can use different host ID
-mappings. If the container reports a permission error, check the mapping and
-read access for its UID/GID in that environment. Avoid broadening the files to
-world-readable. No root container is required by the application.
+The image starts with a small bootstrap that reads the mounted files and copies
+them into its private `/tmp` tmpfs, with mode `600` inside a mode `700` directory.
+It updates the internal file paths, removes supplementary groups and switches to
+UID/GID `10001` before validating TLS and executing the HTTP server. These copies
+are held in memory and disappear when the container stops. The original host
+files are mounted read-only and are never modified.
+
+Compose drops all capabilities, granting only `CHOWN`, `DAC_OVERRIDE`, `SETGID`
+and `SETUID` for this bootstrap. The server runs without effective capabilities;
+`no-new-privileges` prevents regaining privileges. Keep the supplied entrypoint,
+capabilities and tmpfs settings when adapting the Compose file.
+
+Docker must still be able to mount the source files. Missing files, invalid PEM,
+encrypted keys and mismatched client keys stop startup with a specific error.
+The bootstrap does not replace certificates or disable certificate validation.
+The optional standalone `cloudflared` service has its own token access policy,
+described below.
 
 ## Local access
 
@@ -171,10 +181,11 @@ docker compose --profile tunnel stop cloudflared
 Choose the desired tag in `NOX_VOICE_IMAGE_TAG`, then update:
 
 ```sh
-docker compose pull
 docker compose up -d
 ```
 
+The webapp's `pull_policy: always` checks the registry for the selected image on
+each `up`; a separate pull command is unnecessary.
 Add `--profile tunnel` if the bundled connector should also be running. When an
 update changes `compose.yaml`, copy that version too. Compose recreates affected
 containers when their image or configuration changes.
@@ -239,8 +250,26 @@ This is registry access, not Google login or Mac certificate validation.
 2. For the project's public-image deployment, the package owner opens the package
    on GitHub: **Package settings → Change visibility → Public**. Repository
    visibility and package visibility are separate.
-3. Retry `docker compose pull`. A deliberately private package instead requires
+3. Retry `docker compose up -d`. A deliberately private package instead requires
    GHCR authentication with read permission; do not use the Google client secret.
+
+### Controller certificates cannot be loaded
+
+`Controller certificates are missing or invalid.` in older images means the
+gateway failed to load its local TLS files **before connecting to the Mac**.
+Starting or restarting the Mac controller does not fix this failure. The current
+image prepares private secret files automatically and validates local TLS inputs
+before starting the server. Use the current Compose file and published image;
+normal startup and updates both use `docker compose up -d`.
+
+If the files themselves are missing, invalid or mismatched, the container startup
+log identifies that problem without exposing their contents. Copy all three
+files from the same Mac setup's `gateway/` bundle; do not regenerate the setup
+just to repair host file permissions.
+
+Local validation does not prove network reachability, server identity,
+certificate expiry or that the Mac trusts this client. Those checks happen
+during the subsequent TLS connection.
 
 ### Other errors
 

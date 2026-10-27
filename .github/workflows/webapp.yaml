@@ -42,6 +42,12 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
+      - name: Build runtime image for startup checks
+        run: docker build -f deploy/webapp.Dockerfile -t nox-voice-webapp:ci .
+      - name: Verify private secret mounts and unprivileged server
+        run: uv run --frozen pytest -q tests/deploy/test_container_startup.py
+        env:
+          NOX_VOICE_CONTAINER_TEST_IMAGE: nox-voice-webapp:ci
 
   image:
     needs: checks
