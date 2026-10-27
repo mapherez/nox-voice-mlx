@@ -1,0 +1,68 @@
+name: nox-voice
+services:
+  webapp:
+    image: ghcr.io/mapherez/nox-voice-mlx-webapp:${NOX_VOICE_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    environment:
+      NOX_VOICE_PUBLIC_URL: ${NOX_VOICE_PUBLIC_URL:?Set the public HTTPS origin}
+      NOX_VOICE_OWNER_EMAIL: ${NOX_VOICE_OWNER_EMAIL:?Set the authorized Google account}
+      NOX_VOICE_GOOGLE_CLIENT_ID: ${NOX_VOICE_GOOGLE_CLIENT_ID:?Set the Google OAuth client ID}
+      NOX_VOICE_GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret
+      NOX_VOICE_SESSION_SECRET_FILE: /run/secrets/session_secret
+      NOX_VOICE_CONTROLLER_URL: ${NOX_VOICE_CONTROLLER_URL:?Set the Mac HTTPS controller origin}
+      NOX_VOICE_CONTROLLER_CA_FILE: /run/secrets/controller_ca
+      NOX_VOICE_CONTROLLER_CERT_FILE: /run/secrets/controller_client_cert
+      NOX_VOICE_CONTROLLER_KEY_FILE: /run/secrets/controller_client_key
+    volumes:
+      - webapp-data:/data
+    secrets:
+      - google_client_secret
+      - session_secret
+      - controller_ca
+      - controller_client_cert
+      - controller_client_key
+    networks: [voice]
+    # Access is through cloudflared by default. Do not publish the private API to the Internet.
+    # For a local HTTP health check only: ports: ["127.0.0.1:8080:8080"]
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "2"}
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.4
+    user: "10001:10001"
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token-file /run/secrets/cloudflare_tunnel_token
+    secrets: [cloudflare_tunnel_token]
+    networks: [voice]
+    depends_on:
+      webapp:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "2"}
+
+networks:
+  voice:
+volumes:
+  webapp-data:
+secrets:
+  google_client_secret:
+    file: ./secrets/google-client-secret
+  session_secret:
+    file: ./secrets/session-secret
+  controller_ca:
+    file: ./secrets/ca.crt
+  controller_client_cert:
+    file: ./secrets/client.crt
+  controller_client_key:
+    file: ./secrets/client.key
+  cloudflare_tunnel_token:
+    file: ./secrets/cloudflare-tunnel-token

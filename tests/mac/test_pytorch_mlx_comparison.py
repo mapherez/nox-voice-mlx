@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-Layer-by-layer comparison between PyTorch and MLX implementations.
-Verifies that the MLX port produces equivalent outputs to PyTorch.
+Manual, weight-dependent comparison inherited from the original port.
+This diagnostic is excluded from the default automated suite.
 """
 
 import numpy as np
 import torch
 import mlx.core as mx
 import time
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MODEL_PATH = REPO_ROOT / "mac" / "weights" / "model.safetensors"
 
 SILENCE_TOKENS = np.array([948, 243, 1178, 546, 1736, 1030, 1978, 2008], dtype=np.int64)
 
@@ -18,14 +22,14 @@ def load_pytorch_model():
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
     import sys
-    sys.path.insert(0, "personaplex/moshi")
+    sys.path.insert(0, str(REPO_ROOT / "vendor" / "personaplex" / "moshi"))
     from moshi.models import loaders
 
     print("Loading PyTorch model...")
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
     lm_model = loaders.get_moshi_lm(
-        "weights/model.safetensors",
+        str(MODEL_PATH),
         device=device,
         dtype=torch.bfloat16,
     )
@@ -70,7 +74,7 @@ def load_mlx_model():
     )
 
     model = Lm(config)
-    model.load_pytorch_weights("weights/model.safetensors", config, strict=False)
+    model.load_pytorch_weights(str(MODEL_PATH), config, strict=False)
     return model, config
 
 

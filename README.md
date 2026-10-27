@@ -1,178 +1,127 @@
-# PersonaPlex MLX
+# NoX Voice
 
-Real-time voice conversation AI running on Apple Silicon. A port of NVIDIA's PersonaPlex 7B to Apple's MLX framework.
+A personal, self-hosted voice workspace: a webapp in your homelab and NVIDIA
+PersonaPlex 7B running natively with MLX on your Apple Silicon Mac.
 
-![PersonaPlex MLX](https://img.shields.io/badge/MLX-Apple%20Silicon-black?style=flat-square&logo=apple)
-![Python](https://img.shields.io/badge/Python-3.10+-blue?style=flat-square&logo=python)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+The interface has light/dark themes, a Settings drawer, and a procedural 3D sphere
+that responds **only to the assistant's playback audio**. Microphone audio has no
+visualization. All interface text, commands and technical events are in English.
 
-## Features
-
-- **Real-time voice conversation** - Full-duplex audio streaming at 24kHz
-- **Voice conditioning** - 18 different voice personas (natural & variety)
-- **Customizable personas** - Set system prompts for different AI personalities
-- **Dynamic quantization** - Switch between 4/5/6/8-bit on the fly
-- **Web UI** - Clean browser interface with audio visualization
-- **~1.2x realtime** - Runs faster than realtime on M1/M2/M3 Macs
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    PersonaPlex MLX Pipeline                      │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Browser (WebSocket)                                             │
-│       │                                                          │
-│       ▼                                                          │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │              live_server_mlx.py                          │    │
-│  │  FastAPI + WebSocket server                              │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│       │                                                          │
-│       ▼                                                          │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
-│  │ Mimi Encode │───▶│   LM (7B)   │───▶│ Mimi Decode │         │
-│  │   ~19ms     │    │   ~26ms     │    │   ~19ms     │         │
-│  └─────────────┘    └─────────────┘    └─────────────┘         │
-│                            │                                     │
-│                            ▼                                     │
-│                     ┌─────────────┐                             │
-│                     │  DepFormer  │                             │
-│                     │  16 slices  │                             │
-│                     │   ~12ms     │                             │
-│                     └─────────────┘                             │
-│                                                                  │
-│  Total: ~65ms per 80ms frame = 1.23x realtime                   │
-└─────────────────────────────────────────────────────────────────┘
+```text
+Browser → Cloudflare Tunnel → webapp + gateway (Docker)
+                                      ↓ mutual TLS on the private LAN
+                              controller (native Python on Mac)
+                                      ↓ authenticated loopback
+                              PersonaPlex MLX engine
 ```
 
-## Requirements
+Google login authorizes your browser. A separate client certificate authorizes
+the gateway to control the Mac. Only one conversation runs at a time.
 
-- macOS with Apple Silicon (M1/M2/M3)
-- Python 3.10+
-- ~8GB RAM (4-bit quantization)
-- ~16GB disk for weights
+## Components
 
-## Installation
+| Directory | Responsibility |
+| --- | --- |
+| `frontend/` | Vite/TypeScript UI, assistant-only Three.js sphere and browser audio |
+| `gateway/` | Google OAuth, revocable server sessions, CSRF and streaming proxy |
+| `mac/controller/` | Manual/optional automatic startup, mTLS API and engine lifecycle |
+| `mac/engine/` | Original PersonaPlex MLX inference, isolated in a worker process |
+| `mac/weights/` | Model and voice files; kept on the Mac, never in the webapp image |
+| `vendor/personaplex/` | Pinned NVIDIA reference submodule; not a production service |
+| `deploy/` | Dockerfile, Compose and deployment configuration |
+| `tests/` | Security, lifecycle, asset validation and audio tests |
 
-### 1. Clone the repository
+## First installation
 
-```bash
-git clone --recursive https://github.com/Acelogic/personaplex-mlx.git
-cd personaplex-mlx
+1. Follow [Mac setup](docs/mac-setup.md) to install the native components, accept
+   the model terms, prepare the weights and generate certificates.
+2. Follow [homelab deployment](docs/deployment.md) to configure Google login,
+   install the gateway's client certificates and connect Cloudflare Tunnel.
+3. Start the controller on the Mac. Sign in to the webapp, open **Settings →
+   Engine → Start engine**, wait for **Ready**, then start a conversation.
+
+The current port defaults are **8443** for the new HTTPS controller, **8000** for
+the private loopback worker, and **8080** inside the webapp container. The Mac
+ports are configurable during setup. Only the controller's private address is
+configured in the webapp; the browser never connects directly to the Mac.
+
+The public webapp image is intended to be published by the included workflow:
+
+```text
+ghcr.io/mapherez/nox-voice-mlx-webapp:latest
 ```
 
-> **Note:** The `--recursive` flag clones the [NVIDIA PersonaPlex](https://github.com/NVIDIA/personaplex) submodule (PyTorch reference code).
+An image exists only after the workflow has successfully run on GitHub. The first
+GHCR package must be made public by its owner. No model files or deployment
+credentials are included in that image.
 
-### 2. Install dependencies with uv
+## Model files
 
-```bash
-# Install uv if you don't have it
-curl -LsSf https://astral.sh/uv/install.sh | sh
+Use **only** [nvidia/personaplex-7b-v1](https://huggingface.co/nvidia/personaplex-7b-v1).
+The preparation command downloads the necessary files, pins the official commit,
+checks hashes, extracts the 18 known voices safely and creates an offline manifest:
 
-# Create venv and install dependencies
-uv sync
+```text
+mac/weights/
+├── model.safetensors
+├── tokenizer-e351c8d8-checkpoint125.safetensors
+├── tokenizer_spm_32k_3.model
+├── voices.tgz
+├── manifest.json
+└── voices_cpu/
+    ├── NATF0.pt
+    └── ... 18 known voice prompts
 ```
 
-### 3. Download weights
+Expect about 17 GB of downloads. The Hugging Face account must have accepted the
+model's access terms. The engine runs offline after preparation; starting a
+conversation does not download code or call a cloud inference API.
 
-Download the PersonaPlex weights from HuggingFace:
+PersonaPlex is an English model. Portuguese can be requested through the persona
+and evaluated experimentally; this project does not promise Portuguese quality
+or silently route speech through a translation service.
 
-```bash
-uv run download-weights
+## Development and validation
+
+Use native Python 3.12 and Node 24. The root Python environment installs only the
+lightweight components and test tools, not the 7B model or its inference stack:
+
+```sh
+uv sync --locked
+uv run pytest -q
+uv run ruff check .
+cd frontend
+npm ci
+npm test
+npm run build
 ```
 
-Or manually download from [HuggingFace](https://huggingface.co/nvidia/PersonaPlex-7B) and place in `weights/`.
+The mutual TLS test opens an ephemeral loopback listener. Native inference needs
+the additional Mac engine dependencies and prepared weights; see the Mac guide.
+The archived [original port README](docs/original-port.md) describes the upstream
+starting point and is not the installation guide for this version.
 
-Required files:
-- `weights/model.safetensors` (~16GB)
-- `weights/tokenizer-e351c8d8-checkpoint125.safetensors` (~385MB)
-- `weights/tokenizer_spm_32k_3.model` (~553KB)
-- `weights/voices_cpu/*.pt` (voice prompts)
+## Privacy and operational limits
 
-## Usage
+- NoX Voice does not persist microphone audio, generated audio or transcripts.
+  Voice/persona settings are stored privately on the Mac; browser sessions are
+  stored in the gateway's persistent volume. Technical events are bounded and
+  exclude prompts, audio and credentials.
+- With the Cloudflare Tunnel route, audio passes through Cloudflare's network.
+  HTTPS terminates there; this is not browser-to-Mac end-to-end encryption.
+- The Mac must be powered on, awake and running the controller. Engine controls
+  do not wake, reboot or shut down the Mac.
+- Leaving the page, backgrounding it on mobile, signing out or losing the stream
+  stops microphone capture. Resuming always requires a new user action.
+- Stop/restart ends the current conversation. Voice and quantization changes
+  require ending it first. There is no model upload or arbitrary command API.
 
-### Start the server
-
-```bash
-uv run serve
-```
-
-Open http://localhost:8000 in your browser.
-
-### Web UI Controls
-
-- **Voice** - Select from 18 voice personas
-- **Persona** - Customize the AI's system prompt
-- **Quantization** - Switch between 4/5/6/8-bit (or full precision)
-- **Start/Stop** - Begin/end conversation
-- **Mute** - Mute your microphone
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `uv run serve` | Start the web server |
-| `uv run download-weights` | Download model weights |
-| `uv run test` | Run comparison tests |
-
-### API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Web UI |
-| `/ws` | WebSocket | Real-time audio streaming |
-| `/voices` | GET | List available voices |
-| `/set-voice` | POST | Change voice and persona |
-| `/set-quant` | POST | Change quantization level |
-| `/current-quant` | GET | Get current quantization |
-
-## Performance
-
-Tested on Apple Silicon:
-
-| Quantization | Model Time | Total Latency | RTF |
-|--------------|------------|---------------|-----|
-| 4-bit | ~26ms | ~65ms | 1.23x |
-| 5-bit | ~30ms | ~70ms | 1.14x |
-| 6-bit | ~35ms | ~75ms | 1.07x |
-| 8-bit | ~45ms | ~85ms | 0.94x |
-| None | ~80ms | ~120ms | 0.67x |
-
-## Project Structure
-
-```
-personaplex-mlx/
-├── live_server_mlx.py      # Main server (FastAPI + WebSocket)
-├── convert_weights.py      # Weight conversion utility
-├── test_pytorch_mlx_comparison.py  # Verification tests
-├── pyproject.toml          # Dependencies and scripts
-├── weights/                # Model weights (not in git)
-│   ├── model.safetensors
-│   ├── tokenizer*.safetensors
-│   └── voices_cpu/*.pt
-├── personaplex/            # Git submodule → NVIDIA/personaplex
-└── personaplex_mlx/        # MLX model config
-```
-
-## Dependencies
-
-- [MLX](https://github.com/ml-explore/mlx) - Apple's ML framework
-- [moshi-mlx](https://github.com/kyutai-labs/moshi) - Base model implementation
-- [rustymimi](https://github.com/kyutai-labs/moshi) - Neural audio codec
-- [FastAPI](https://fastapi.tiangolo.com/) - Web framework
-
-## References
-
-- [PersonaPlex Paper](https://research.nvidia.com/labs/adlr/files/personaplex/personaplex_preprint.pdf)
-- [PersonaPlex Model](https://huggingface.co/nvidia/personaplex-7b-v1)
-- [Moshi/Mimi](https://github.com/kyutai-labs/moshi)
+See [architecture and security](docs/architecture.md) and the
+[runtime acceptance checklist](docs/validation.md).
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details.
-
----
-
-Built with MLX on Apple Silicon
+The MLX port and new application code retain the repository's MIT license.
+PersonaPlex model weights have their own NVIDIA model license; reference code
+retains its bundled licenses. Inter is redistributed by the frontend dependency
+under the SIL Open Font License. See [third-party notices](docs/notices.md).

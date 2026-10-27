@@ -1,0 +1,14 @@
+# Third-party notices
+
+- The original PersonaPlex MLX port is retained under the root MIT license and
+  Git history. Original inference/model code is moved into `mac/engine/`.
+- NVIDIA PersonaPlex reference code is a pinned submodule at
+  `vendor/personaplex/`, with its own license files. It is excluded from the
+  production webapp image. Model weights are separately subject to the NVIDIA
+  model access terms/license on Hugging Face.
+- Three.js is distributed under its MIT license through the frontend dependency.
+- Inter Variable is distributed by `@fontsource-variable/inter` under SIL OFL
+  1.1; the font and license are included with that dependency. Fonts are served
+  locally, not requested from a font CDN at runtime.
+- The sphere is original procedural rendering. The user's Vecteezy reference is
+  design inspiration and is not redistributed as an application asset.

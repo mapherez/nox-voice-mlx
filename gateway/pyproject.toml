@@ -1,0 +1,13 @@
+[project]
+name = "nox-voice-gateway"
+version = "0.1.0"
+description = "Authenticated web gateway for NoX Voice"
+requires-python = ">=3.12"
+dependencies = ["fastapi>=0.162", "uvicorn[standard]>=0.35", "httpx2>=2.16", "websockets>=15", "authlib>=1.9", "itsdangerous>=2.2"]
+
+[project.scripts]
+nox-voice-web = "nox_voice_gateway.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

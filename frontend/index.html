@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b1018" />
+    <meta
+      name="description"
+      content="NoX Voice — your personal voice workspace, powered by your Mac."
+    />
+    <title>NoX Voice</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="header">
+        <a class="brand" href="/" aria-label="NoX Voice home"
+          ><span class="brand-mark" aria-hidden="true">n<span>·</span></span
+          ><span>NoX <strong>Voice</strong></span></a
+        >
+        <div class="header-actions" id="signed-in-actions" hidden>
+          <button
+            class="engine-badge"
+            id="engine-badge"
+            aria-label="Open engine settings"
+          >
+            <span class="status-dot"></span
+            ><span id="header-state">Connecting</span>
+          </button>
+          <button
+            class="icon-button settings-trigger"
+            id="open-settings"
+            aria-label="Open settings"
+            title="Settings"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
+            >
+              <path
+                d="m9.5 3-.8 2.5-2.5.6-2.1 2.7 1.4 2.2-.1 2.5-1.4 2.2 2 2.8 2.6.6 1.5 2.1h3.8l1.4-2.2 2.6-.6 2-2.8-1.4-2.1v-2.6l1.4-2.1-2-2.8-2.6-.6L14.5 3z"
+              />
+              <circle cx="12" cy="12" r="3.1" />
+            </svg>
+          </button>
+        </div>
+        <span class="header-note" id="header-note"
+          >Your personal voice workspace</span
+        >
+      </header>
+
+      <main class="conversation">
+        <div class="model-label">
+          <span class="mini-spark" aria-hidden="true">✧</span> PERSONAPLEX 7B
+          <span class="model-divider"></span> ON YOUR MAC
+        </div>
+        <h1 id="conversation-title">A space to talk.</h1>
+        <p class="subtitle" id="conversation-subtitle">
+          Sign in to start a conversation.
+        </p>
+        <div
+          class="orb-stage"
+          id="orb-stage"
+          role="img"
+          aria-label="Decorative 3D sphere. It responds only to the assistant's audio."
+        >
+          <div class="orb-aura" aria-hidden="true"></div>
+          <div class="orb-fallback" aria-hidden="true"></div>
+          <canvas id="orb" aria-hidden="true"></canvas>
+        </div>
+        <div class="assistant-indicator" id="assistant-indicator">
+          <span></span
+          ><span id="assistant-label">Made for natural conversation</span>
+        </div>
+
+        <div id="login-panel" class="login-panel" hidden>
+          <a class="button primary google-button" href="/auth/google/start"
+            ><span class="google-mark" aria-hidden="true">G</span> Continue with
+            Google <span aria-hidden="true">↗</span></a
+          >
+          <p class="fine-print">
+            Access is limited to your authorized account.
+          </p>
+        </div>
+        <div class="conversation-actions" id="conversation-actions" hidden>
+          <button id="start-conversation" class="button primary start-button">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              aria-hidden="true"
+            >
+              <rect x="8" y="3" width="8" height="12" rx="4" />
+              <path d="M5 10a7 7 0 0 0 14 0M12 17v4m-4 0h8" /></svg
+            ><span>Start conversation</span>
+          </button>
+          <button
+            id="mute"
+            class="button secondary"
+            hidden
+            aria-pressed="false"
+          >
+            Mute
+          </button>
+          <button id="end-conversation" class="button end-button" hidden>
+            <span class="stop-square" aria-hidden="true"></span>End conversation
+          </button>
+        </div>
+        <button id="engine-hint" class="text-button" hidden>
+          Open Settings to start the engine <span aria-hidden="true">↗</span>
+        </button>
+        <div
+          id="notice"
+          class="notice"
+          role="status"
+          aria-live="polite"
+          hidden
+        ></div>
+        <div id="conversation-metrics" class="conversation-metrics" hidden>
+          <span><span id="latency">—</span> <small>ms latency</small></span
+          ><span class="metric-divider"></span
+          ><span><span id="rtf">—</span> <small>realtime factor</small></span>
+        </div>
+      </main>
+      <footer class="footer">
+        <span
+          ><svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.2"
+            aria-hidden="true"
+          >
+            <rect x="3.5" y="7" width="9" height="7" rx="2" />
+            <path d="M5 7V4a3 3 0 0 1 6 0v3" />
+          </svg>
+          Model runs on your Mac</span
+        ><span>NoX Voice</span>
+      </footer>
+    </div>
+
+    <dialog
+      id="settings"
+      class="settings-drawer"
+      aria-labelledby="settings-title"
+    >
+      <div class="drawer-header">
+        <div>
+          <span class="eyebrow">YOUR WORKSPACE</span>
+          <h2 id="settings-title">Settings</h2>
+        </div>
+        <button
+          id="close-settings"
+          class="icon-button"
+          aria-label="Close settings"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="drawer-content">
+        <section class="settings-section" aria-labelledby="engine-heading">
+          <div class="section-heading">
+            <h3 id="engine-heading">Engine</h3>
+            <span id="drawer-state" class="pill">Connecting</span>
+          </div>
+          <p class="section-description">
+            Run PersonaPlex on your Mac, when you need it.
+          </p>
+          <div class="engine-summary">
+            <span class="engine-symbol" aria-hidden="true">✧</span>
+            <div>
+              <strong>PersonaPlex 7B</strong
+              ><span id="engine-phase">Checking controller connection</span>
+            </div>
+            <span id="engine-memory">—</span>
+          </div>
+          <div class="engine-buttons">
+            <button class="button primary" id="start-engine">
+              Start engine</button
+            ><button class="button secondary" id="stop-engine">Stop</button
+            ><button class="button secondary" id="restart-engine">
+              Restart
+            </button>
+          </div>
+          <div id="engine-progress" class="engine-progress" hidden>
+            <span></span>
+          </div>
+          <p id="engine-error" class="inline-error" role="status" hidden></p>
+          <label class="field-label" for="quantization"
+            >Quantization
+            <span class="field-caption">Engine precision</span></label
+          >
+          <select id="quantization">
+            <option value="4">4-bit · fastest</option>
+            <option value="5">5-bit</option>
+            <option value="6">6-bit</option>
+            <option value="8">8-bit</option>
+            <option value="0">Full precision</option>
+          </select>
+          <p class="field-help">
+            Changing precision reloads the model. End the conversation first.
+          </p>
+        </section>
+        <section class="settings-section" aria-labelledby="voice-heading">
+          <h3 id="voice-heading">Voice &amp; persona</h3>
+          <p class="section-description">
+            Choose how your assistant sounds and responds.
+          </p>
+          <label class="field-label" for="voice">Assistant voice</label
+          ><select id="voice"></select>
+          <label class="field-label" for="persona">Persona</label
+          ><textarea id="persona" rows="4" maxlength="4096" spellcheck="false">
+You are a helpful AI assistant. Be concise and friendly.</textarea>
+          <p class="field-help">
+            Portuguese is experimental with this model. You can ask it to
+            respond in your preferred language.
+          </p>
+          <button id="save-settings" class="button secondary full-width">
+            Apply changes
+          </button>
+          <p id="settings-feedback" class="field-help" role="status"></p>
+        </section>
+        <section class="settings-section" aria-labelledby="connection-heading">
+          <div class="section-heading">
+            <h3 id="connection-heading">Connection</h3>
+            <span class="pill subtle">mTLS</span>
+          </div>
+          <label class="field-label" for="controller-url">Mac controller</label
+          ><input
+            id="controller-url"
+            readonly
+            placeholder="Configured in deployment"
+          />
+          <p class="field-help">
+            The address and certificates are configured in your Docker
+            deployment.
+          </p>
+          <button id="test-connection" class="button secondary full-width">
+            Test connection <span aria-hidden="true">↗</span>
+          </button>
+          <p id="connection-feedback" class="field-help" role="status"></p>
+          <div class="detail-row">
+            <span>Controller startup</span
+            ><strong id="autostart-state">—</strong>
+          </div>
+          <details>
+            <summary>Set up automatic startup</summary>
+            <p class="field-help">
+              On your Mac, run <code>nox-voice autostart enable</code> to start
+              the controller after login. Use
+              <code>nox-voice autostart disable</code> to return to manual
+              startup. The model starts only when you request it.
+            </p>
+          </details>
+          <details id="events-details">
+            <summary>Technical events</summary>
+            <ol id="events" class="events">
+              <li>No events loaded.</li>
+            </ol>
+          </details>
+        </section>
+        <section class="settings-section" aria-labelledby="appearance-heading">
+          <h3 id="appearance-heading">Appearance</h3>
+          <label class="field-label" for="theme">Color theme</label
+          ><select id="theme">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </section>
+        <section
+          class="settings-section account-section"
+          aria-labelledby="account-heading"
+        >
+          <h3 id="account-heading">Account</h3>
+          <div class="account-row">
+            <span class="avatar" id="avatar" aria-hidden="true">N</span>
+            <div>
+              <strong id="account-email">Signed in</strong
+              ><span>Connected with Google</span>
+            </div>
+          </div>
+          <button id="logout" class="button secondary full-width">
+            Sign out
+          </button>
+        </section>
+      </div>
+      <div class="drawer-footer">
+        <span class="status-dot"></span> Conversation audio is not recorded.
+      </div>
+    </dialog>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -28,12 +28,15 @@ ENV/
 .LSOverride
 
 # Weights (too large for git)
-weights/*.safetensors
-weights/*.pt
-weights/voices_cpu/
+mac/weights/*.safetensors
+mac/weights/*.pt
+mac/weights/*.tgz
+mac/weights/voices_cpu/
+mac/weights/manifest.json
+mac/weights/.cache/
 
 # Keep config
-!weights/config.json
+!mac/weights/config.json
 
 # Logs
 *.log
@@ -42,3 +45,20 @@ nohup.out
 # Testing artifacts
 test_*.wav
 test_*.json
+
+# Local tools, frontend output and secrets
+node_modules/
+frontend/dist/
+.env
+.env.*
+!.env.example
+secrets/
+*.key
+*.crt
+*.pem
+*.sqlite3*
+.pytest_cache/
+.ruff_cache/
+.cache/
+.coverage
+*.egg-info/

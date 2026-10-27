@@ -1,66 +1,28 @@
 [project]
-name = "personaplex-mlx"
+name = "nox-voice-development"
 version = "0.1.0"
-description = "Real-time voice conversation AI on Apple Silicon"
-readme = "README.md"
-requires-python = ">=3.10"
-license = { text = "MIT" }
-authors = [
-    { name = "mcruz" }
-]
-keywords = ["mlx", "apple-silicon", "voice", "ai", "personaplex"]
+requires-python = ">=3.12"
 
-dependencies = [
-    "mlx>=0.21.0",
-    "moshi-mlx>=0.2.2",
-    "rustymimi>=0.2.2",
-    "fastapi>=0.109.0",
-    "uvicorn>=0.27.0",
-    "numpy>=1.24.0",
-    "torch>=2.0.0",
-    "sentencepiece>=0.1.99",
-    "huggingface-hub>=0.20.0",
-]
+[tool.uv]
+package = false
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "ruff>=0.1.0",
-]
+[dependency-groups]
+dev = ["nox-voice-gateway", "nox-voice-mac", "pytest>=8.3", "pytest-asyncio>=0.25", "ruff>=0.11", "pip-audit>=2.9"]
 
-[project.scripts]
-personaplex = "live_server_mlx:main"
+[tool.uv.sources]
+nox-voice-gateway = { path = "gateway", editable = true }
+nox-voice-mac = { path = "mac", editable = true }
 
-[tool.uv.scripts]
-serve = "python live_server_mlx.py"
-test = "python test_pytorch_mlx_comparison.py"
-download-weights = """python -c "
-from huggingface_hub import snapshot_download
-import os
-
-print('Downloading PersonaPlex weights from HuggingFace...')
-print('This will download ~17GB of model weights.')
-print()
-
-snapshot_download(
-    'nvidia/personaplex-7b-v1',
-    local_dir='weights',
-    ignore_patterns=['*.md', '*.txt', 'figures/*']
-)
-
-print()
-print('Done! Weights saved to weights/')
-"
-"""
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--ignore=tests/mac/test_pytorch_mlx_comparison.py"
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
+exclude = ["vendor", "mac/engine/personaplex_mlx", "mac/engine/convert_weights.py", "tests/mac/test_pytorch_mlx_comparison.py"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W"]
+select = ["E", "F", "I"]
 ignore = ["E501"]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
