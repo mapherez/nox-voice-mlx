@@ -15,8 +15,9 @@ The `frontend/` directory is for development. **You do not need Node, npm, or a
 separate frontend installation to use the published image.**
 
 Keep the default controller port **8443** for this first installation. In the
-examples below, replace `192.168.1.50` with your Mac Studio's private LAN IP and
-`voice.example.com` with your chosen webapp hostname.
+examples below, replace `192.168.1.50` with your Mac Studio's private LAN IP.
+The webapp starts at **http://localhost:8080** on the Docker host. A public domain
+or tunnel is optional and can be configured later.
 
 ## 1. On the Mac Studio: prepare the native service
 
@@ -139,9 +140,8 @@ This guide does not commit, push or publish anything automatically.
 
 ## 3. On the homelab: configure and start the webapp
 
-This first-install path uses the **Cloudflare connector included in Compose**.
-It assumes a Linux host with Docker Engine and the `docker compose` plugin, plus
-a domain managed by Cloudflare.
+This first-install path uses **localhost**, without a reverse proxy or tunnel.
+It assumes a Linux host with Docker Engine and the `docker compose` plugin.
 
 ### 3a. Prepare the deployment directory
 
@@ -177,11 +177,10 @@ npm, or clone the whole repository on the homelab.
 
 In your Google Cloud project, create an OAuth client with application type
 **Web application**. Configure its consent screen and add your account as a test
-user if the project requires it. Set this exact authorized redirect URI, using
-your chosen hostname:
+user if the project requires it. Set this exact authorized redirect URI:
 
 ```text
-https://voice.example.com/auth/google/callback
+http://localhost:8080/auth/google/callback
 ```
 
 Keep its **client ID** and **client secret** for the next steps. The ID goes in
@@ -192,7 +191,8 @@ Edit `.env` inside your deployment directory on the homelab:
 
 ```env
 NOX_VOICE_IMAGE_TAG=latest
-NOX_VOICE_PUBLIC_URL=https://voice.example.com
+NOX_VOICE_PUBLIC_URL=http://localhost:8080
+NOX_VOICE_WEB_PORT=8080
 NOX_VOICE_OWNER_EMAIL=your-google-email@example.com
 NOX_VOICE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 NOX_VOICE_CONTROLLER_URL=https://192.168.1.50:8443
@@ -201,23 +201,28 @@ NOX_VOICE_CONTROLLER_URL=https://192.168.1.50:8443
 The last line must use the **Mac Studio's IP and controller port**, not the
 homelab's IP. The owner email must be the verified Google account you will use.
 
-### 3c. Configure the Cloudflare route
+### 3c. Local access
 
-In Cloudflare, [create a remotely managed Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/).
-Copy the tunnel token for the connector. The Compose service will run the
-connector, so you do not need to run the generated Docker command separately.
+No reverse proxy or Cloudflare configuration is needed for localhost. Leave the
+`tunnel` profile disabled. The Compose file publishes the webapp only on the
+Docker host's loopback address, at port 8080.
 
-Add a public hostname route with:
+`NOX_VOICE_PUBLIC_URL` is the URL used by your browser; its name does not require
+public Internet exposure. Keep its hostname and port identical to the URL you
+open and the Google redirect URI. The Mac controller still uses HTTPS and client
+certificates; the localhost HTTP exception applies only to the webapp.
 
-| Field | Value |
-| --- | --- |
-| Public hostname | `voice.example.com` — the same hostname used above |
-| Service type | HTTP |
-| Service URL | `webapp:8080` |
+`localhost` means the device running your browser. To test a headless homelab
+from another computer, use SSH forwarding from that computer:
 
-The hostname is HTTPS for the browser. The HTTP hop above stays inside the
-Compose Docker network. Audio passes through Cloudflare, which terminates the
-browser-facing TLS connection.
+```sh
+ssh -N -L 8080:127.0.0.1:8080 YOUR_USER@YOUR_HOMELAB_HOST
+```
+
+Then open `http://localhost:8080` on that computer. For direct LAN access from a
+MacBook or iPhone, use a browser-trusted HTTPS hostname on the LAN. Plain HTTP
+at a LAN IP does not provide browser microphone access. Google login still
+contacts Google even when the webapp itself is only locally accessible.
 
 ### 3d. Save the remaining secrets
 
@@ -231,15 +236,11 @@ read -r -s -p 'Google OAuth client secret: ' nox_google_secret
 printf '\n'
 printf '%s' "$nox_google_secret" > secrets/google-client-secret
 unset nox_google_secret
-read -r -s -p 'Cloudflare tunnel token: ' nox_tunnel_token
-printf '\n'
-printf '%s' "$nox_tunnel_token" > secrets/cloudflare-tunnel-token
-unset nox_tunnel_token
 openssl rand -hex 32 > secrets/session-secret
 ```
 
 Run the secret generation only during initial setup; retain `session-secret`
-when updating the app. Check that all six files now exist:
+when updating the app. Check that all five files now exist:
 
 ```text
 your-deployment-directory/
@@ -250,8 +251,7 @@ your-deployment-directory/
     ├── client.crt
     ├── client.key
     ├── google-client-secret
-    ├── session-secret
-    └── cloudflare-tunnel-token
+    └── session-secret
 ```
 
 Give the containers' UID access to this dedicated secrets directory:
@@ -271,20 +271,21 @@ UID 10001 ownership, since Compose mounts each file individually.
 Still on the homelab, from your deployment directory:
 
 ```sh
-docker compose --profile tunnel config --quiet
-docker compose --profile tunnel pull
-docker compose --profile tunnel up -d
-docker compose --profile tunnel ps
+docker compose config --quiet
+docker compose pull
+docker compose up -d
+docker compose ps
 ```
 
-**Checkpoint:** `webapp` is healthy and `cloudflared` is running. If the image
+**Checkpoint:** `webapp` is healthy. No tunnel service is started. If the image
 cannot be pulled, check step 2 before troubleshooting the Mac.
 The homelab must be able to reach the Mac's LAN IP on TCP port 8443; permit that
 connection in your LAN/VLAN/firewall rules if needed.
 
-## 4. On the MacBook or iPhone: use the app
+## 4. In the browser: use the app
 
-1. Open `https://voice.example.com` and sign in with the configured Google account.
+1. Open `http://localhost:8080` on the Docker host, or through the SSH forward
+   described above, and sign in with the configured Google account.
 2. Open **Settings → Connection → Test connection**. It should confirm the Mac
    controller is reachable.
 3. In **Settings → Engine**, click **Start engine** and wait for **Ready**.
@@ -299,4 +300,4 @@ fix an unrelated image, login or tunnel error.
 
 After the first successful call, use [Mac reference](mac-setup.md) for optional
 autostart and certificate renewal, or [deployment reference](deployment.md) for
-updates and alternative connector arrangements.
+updates, LAN HTTPS access and optional external access.

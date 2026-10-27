@@ -9,13 +9,15 @@ does not contain the Mac engine, model weights or credentials.
 ## Google login
 
 Create a Google OAuth client of type **Web application**. Its authorized redirect
-URI must exactly match:
+URI for the default localhost deployment must exactly match:
 
 ```text
-https://voice.example.com/auth/google/callback
+http://localhost:8080/auth/google/callback
 ```
 
-Use your actual HTTPS hostname. Configure the OAuth consent screen/test users as
+For optional LAN HTTPS or external access, also register
+`https://voice.example.com/auth/google/callback` with your actual hostname.
+Configure the OAuth consent screen/test users as
 required by your Google project. The app itself accepts only the verified email
 configured in `NOX_VOICE_OWNER_EMAIL`. It uses its own login and does not require
 NoX Backend or its API key.
@@ -27,15 +29,18 @@ rename `.env.example` to `.env`, and fill in:
 
 ```env
 NOX_VOICE_IMAGE_TAG=latest
-NOX_VOICE_PUBLIC_URL=https://voice.example.com
+NOX_VOICE_PUBLIC_URL=http://localhost:8080
+NOX_VOICE_WEB_PORT=8080
 NOX_VOICE_OWNER_EMAIL=you@example.com
 NOX_VOICE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 NOX_VOICE_CONTROLLER_URL=https://192.168.1.50:8443
 ```
 
-The public URL must be an origin with no path or trailing slash. The controller
-URL must use the IP covered by the server certificate. Both URLs require HTTPS.
-The browser's microphone cannot be enabled by visiting a plain HTTP LAN IP.
+The webapp URL must be an origin with no path or trailing slash. HTTP is accepted
+only for exact `localhost`, `127.0.0.1` or `::1` hosts; all other webapp hostnames
+require HTTPS. The controller URL always requires HTTPS and must use the IP
+covered by the server certificate. A plain HTTP LAN IP does not provide browser
+microphone access.
 
 Create `secrets/` alongside Compose and populate:
 
@@ -79,22 +84,51 @@ mounted secret files need UID 10001 ownership.
 Local Compose secret mounts can preserve host ownership, so declarations of
 `mode` in Compose alone are not a substitute for correct file permissions.
 
-## Cloudflare Tunnel
+## Localhost: no reverse proxy or tunnel
 
-Recommended: use the supplied connector in the same Docker network, so the
+After preparing `.env` and the five required secret files:
+
+```sh
+docker compose pull
+docker compose up -d
+```
+
+Open **http://localhost:8080** on the Docker host and sign in with Google. The
+published port binds only to `127.0.0.1`. No Cloudflare token is needed and its
+profile is not started. For a different host port, change both
+`NOX_VOICE_WEB_PORT` and the port in `NOX_VOICE_PUBLIC_URL`, then register the
+matching Google redirect URI.
+
+If your browser runs on a different computer, `localhost` refers to that computer,
+not the homelab. For a local test through SSH, run on the browser's computer:
+
+```sh
+ssh -N -L 8080:127.0.0.1:8080 YOUR_USER@YOUR_HOMELAB_HOST
+```
+
+Then open the same localhost URL. For direct LAN access on a MacBook/iPhone,
+configure a browser-trusted HTTPS hostname on a LAN reverse proxy and set
+`NOX_VOICE_PUBLIC_URL` to that origin. A public tunnel is not required for LAN
+HTTPS. Google login still requires an Internet connection to Google.
+
+## Optional external access: Cloudflare Tunnel
+
+When enabling external access, use the supplied connector in the same Docker network, so the
 connector-to-webapp hop does not travel unencrypted across the LAN.
 
-1. Create a named tunnel in Cloudflare and put its token in the secret file.
-2. Configure its public hostname `voice.example.com` to service
+1. Set `NOX_VOICE_PUBLIC_URL=https://voice.example.com` in `.env` and register
+   that hostname's `/auth/google/callback` URI with Google.
+2. Create a named tunnel in Cloudflare and put its token in the secret file.
+3. Configure its public hostname `voice.example.com` to service
    **`http://webapp:8080`**.
-3. Start:
+4. Start:
 
 ```sh
 docker compose --profile tunnel pull
 docker compose --profile tunnel up -d
 ```
 
-No host port is published by default. Your existing `cloudflared` connector can
+The host port remains loopback-only. Your existing `cloudflared` connector can
 instead join this Docker network and route to the same service name; omit the
 `tunnel` profile in that case. If you keep a connector on another machine, use a
 properly verified HTTPS reverse proxy for that LAN hop rather than disabling TLS
@@ -107,7 +141,7 @@ where the browser-facing TLS connection terminates.
 
 ## Initial use
 
-Start the controller on the Mac, open the HTTPS webapp and sign in. In Settings:
+Start the controller on the Mac, open the configured webapp URL and sign in. In Settings:
 
 1. Check the Mac address and click **Test connection**.
 2. Click **Start engine** and wait for **Ready**.
@@ -135,14 +169,15 @@ docker build -f deploy/webapp.Dockerfile -t nox-voice-webapp:local .
 Choose a version/commit tag in `.env` for controlled updates, then run:
 
 ```sh
-docker compose --profile tunnel pull
-docker compose --profile tunnel up -d
+docker compose pull
+docker compose up -d
 ```
 
 Publishing an image never deploys it automatically. The named `webapp-data`
 volume retains browser sessions. Do not remove it when updating; deleting it
 signs out all devices. Session expiry is twelve hours and logout revokes the
 current device's session. Keep the session secret stable across updates.
+If using the optional tunnel, add `--profile tunnel` to the update commands.
 
 ## Troubleshooting
 
@@ -154,8 +189,9 @@ current device's session. Keep the session secret stable across updates.
 - **Model missing:** run preparation on the Mac. Mounting model files in Docker
   does not make them available to the native engine.
 - **Login rejected:** check the exact owner email, Google client settings and
-  public HTTPS origin. Other Google accounts are deliberately refused.
-- **Microphone unavailable:** use the HTTPS hostname, check browser permission,
+  configured browser origin (including the localhost port). Other Google
+  accounts are deliberately refused.
+- **Microphone unavailable:** use localhost HTTP or a trusted HTTPS hostname, check browser permission,
   start from a direct user click and ensure another tab is not using the engine.
 - **Controller request fails while the panel loads:** the panel and controller
   are separate. The local `8080` webapp healthcheck does not prove Mac readiness.

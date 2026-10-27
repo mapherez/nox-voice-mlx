@@ -6,7 +6,7 @@ The local implementation checks passed with Python 3.12 and Node 24:
 
 | Check | Result |
 | --- | --- |
-| Python suite | 38 tests passed |
+| Python suite | 51 tests passed |
 | Browser audio resampling suite | 4 tests passed, including 24/44.1/48 kHz input and mute |
 | Native MLX smoke test | Small model warmup at full/4/5/6/8-bit precision, cache restore and unsafe pickle rejection passed |
 | Frontend production build | TypeScript and Vite passed |
@@ -14,6 +14,8 @@ The local implementation checks passed with Python 3.12 and Node 24:
 | Formatting and static checks | Ruff, Prettier and Git whitespace checks passed |
 | Lockfiles | Root, gateway and Mac lockfiles verified offline |
 | Real transport integration | PCM roundtrip through gateway, mutual TLS controller and authenticated echo worker passed |
+| Localhost HTTP | Mocked Google login/state cookies, authenticated PCM streaming, CSRF/origin/host rejection and logout passed; controller TLS remains required |
+| Local Compose configuration | Official Compose CLI validated only `webapp` starts by default, binds `127.0.0.1:8080` and needs no Cloudflare token |
 | Visual review | Compiled frontend reviewed in Chrome at desktop and emulated 375 px iPhone width, including light/dark themes and the Settings drawer |
 
 The echo worker and browser preview use synthetic data. They do not establish
@@ -21,8 +23,8 @@ real model performance or browser microphone compatibility. The production build
 currently reports a non-failing chunk-size warning for the Three.js bundle
 (approximately 542 kB minified, 137 kB compressed).
 
-Docker was not available in the development environment, so the image has not
-been built locally or published. Actual Google login, the full PersonaPlex model,
+Docker Engine was not available in the development environment, so the image has
+not been built locally or published. Actual Google login, the full PersonaPlex model,
 Cloudflare routing and physical iPhone audio remain deployment acceptance work.
 
 ## Deployment acceptance

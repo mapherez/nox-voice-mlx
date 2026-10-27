@@ -54,7 +54,7 @@ export class ConversationAudio {
       await context.resume();
       if (generation !== this.generation) return;
       const url = new URL("/ws", window.location.origin);
-      url.protocol = "wss:";
+      url.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const socket = new WebSocket(url);
       this.socket = socket;
       socket.binaryType = "arraybuffer";

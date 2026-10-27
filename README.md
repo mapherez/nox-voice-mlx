@@ -8,7 +8,7 @@ that responds **only to the assistant's playback audio**. Microphone audio has n
 visualization. All interface text, commands and technical events are in English.
 
 ```text
-Browser → Cloudflare Tunnel → webapp + gateway (Docker)
+Browser → localhost or LAN HTTPS → webapp + gateway (Docker)
                                       ↓ mutual TLS on the private LAN
                               controller (native Python on Mac)
                                       ↓ authenticated loopback
@@ -17,6 +17,11 @@ Browser → Cloudflare Tunnel → webapp + gateway (Docker)
 
 Google login authorizes your browser. A separate client certificate authorizes
 the gateway to control the Mac. Only one conversation runs at a time.
+
+The default Compose deployment opens at `http://localhost:8080` on the Docker
+host. Google login remains required. Cloudflare Tunnel is optional; neither a
+tunnel nor a reverse proxy is needed for localhost. Direct access from another
+LAN device requires browser-trusted HTTPS for microphone access.
 
 ## Components
 

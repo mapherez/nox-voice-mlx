@@ -11,6 +11,11 @@ COOKIE = "__Host-nox_voice"
 SESSION_SECONDS = 12 * 60 * 60
 
 
+def cookie_name(secure: bool) -> str:
+    # __Host- cookies require Secure, so local HTTP uses a separate cookie name.
+    return COOKIE if secure else "nox_voice_local"
+
+
 def token_digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 

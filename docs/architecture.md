@@ -11,6 +11,12 @@ The gateway validates Google OpenID Connect through Authlib (state, nonce,
 signature, issuer and audience), then requires a verified configured email and a
 subject identifier. Google tokens are not persisted. The browser receives an
 opaque, HttpOnly/Secure/SameSite cookie; only its digest is stored in SQLite.
+For HTTP loopback deployment only, cookies use distinct names without the
+`__Host-` prefix or Secure flag; HttpOnly, SameSite, owner authentication, CSRF
+and Origin validation remain enabled. HTTPS deployments retain Secure cookies.
+HTTP webapp origins are accepted only for exact `localhost`, `127.0.0.1` or
+`::1` hosts, and Compose binds the published port to `127.0.0.1` by default.
+The controller URL always requires HTTPS and mutual TLS.
 CSRF tokens remain in page memory, never URLs or localStorage. The only
 localStorage value is the light/dark/system theme preference.
 
@@ -79,3 +85,11 @@ Cloudflare Tunnel encrypts its public route and connector link but terminates
 browser TLS. The remote route therefore trusts Cloudflare with the traffic.
 The separate gateway-to-Mac hop remains certificate-verified. Public deployment
 uses Google login even when the request originates inside the home network.
+
+Cloudflare is optional. Localhost runs without a reverse proxy or tunnel. A
+trusted HTTPS hostname can also resolve directly to a LAN reverse proxy without
+any public route. The configured `NOX_VOICE_PUBLIC_URL` is the browser origin,
+not a requirement to publish the service. Only enabling the optional tunnel
+profile starts its connector. Google authentication still requires Internet
+access to Google; inference and local audio transport do not use Cloudflare in
+a localhost or LAN-only deployment.

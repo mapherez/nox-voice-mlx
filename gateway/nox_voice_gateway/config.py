@@ -30,8 +30,7 @@ class Config:
         controller = urlsplit(self.controller_url)
         for value in (public, controller):
             if (
-                value.scheme != "https"
-                or not value.hostname
+                not value.hostname
                 or value.username
                 or value.password
                 or value.query
@@ -39,8 +38,16 @@ class Config:
                 or value.path not in ("", "/")
             ):
                 raise ValueError(
-                    "Public and controller URLs must be HTTPS origins without credentials, paths or queries."
+                    "Webapp and controller URLs must be origins without credentials, paths or queries."
                 )
+            if value.port is not None and not 1 <= value.port <= 65535:
+                raise ValueError("URL ports must be between 1 and 65535.")
+        if controller.scheme != "https":
+            raise ValueError("The Mac controller URL must use HTTPS.")
+        if public.scheme != "https" and not (
+            public.scheme == "http" and public.hostname in {"localhost", "127.0.0.1", "::1"}
+        ):
+            raise ValueError("The webapp URL must use HTTPS, except HTTP on localhost.")
         if len(self.session_secret) < 32:
             raise ValueError(
                 "NOX_VOICE_SESSION_SECRET must contain at least 32 characters (or use its _FILE variable)."
@@ -48,12 +55,14 @@ class Config:
         if not self.owner_email or "@" not in self.owner_email:
             raise ValueError("Configure NOX_VOICE_OWNER_EMAIL before exposing the webapp.")
 
+    @property
+    def secure_cookies(self) -> bool:
+        return urlsplit(self.public_url).scheme == "https"
+
     @classmethod
     def from_env(cls):
         return cls(
-            public_url=os.environ.get(
-                "NOX_VOICE_PUBLIC_URL", "https://voice.example.invalid"
-            ).rstrip("/"),
+            public_url=os.environ.get("NOX_VOICE_PUBLIC_URL", "http://localhost:8080").rstrip("/"),
             owner_email=os.environ.get("NOX_VOICE_OWNER_EMAIL", "").strip().casefold(),
             google_client_id=os.environ.get("NOX_VOICE_GOOGLE_CLIENT_ID", "").strip(),
             google_client_secret=secret("NOX_VOICE_GOOGLE_CLIENT_SECRET"),

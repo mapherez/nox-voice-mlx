@@ -10,7 +10,7 @@ services:
     tmpfs:
       - /tmp:size=32m,mode=1777
     environment:
-      NOX_VOICE_PUBLIC_URL: ${NOX_VOICE_PUBLIC_URL:?Set the public HTTPS origin}
+      NOX_VOICE_PUBLIC_URL: ${NOX_VOICE_PUBLIC_URL:-http://localhost:8080}
       NOX_VOICE_OWNER_EMAIL: ${NOX_VOICE_OWNER_EMAIL:?Set the authorized Google account}
       NOX_VOICE_GOOGLE_CLIENT_ID: ${NOX_VOICE_GOOGLE_CLIENT_ID:?Set the Google OAuth client ID}
       NOX_VOICE_GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret
@@ -28,8 +28,8 @@ services:
       - controller_client_cert
       - controller_client_key
     networks: [voice]
-    # Access is through cloudflared by default. Do not publish the private API to the Internet.
-    # For a local HTTP health check only: ports: ["127.0.0.1:8080:8080"]
+    ports:
+      - "127.0.0.1:${NOX_VOICE_WEB_PORT:-8080}:8080"
     logging:
       driver: json-file
       options: {max-size: 5m, max-file: "2"}

@@ -17,7 +17,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from websockets.exceptions import ConnectionClosed, InvalidHandshake
 
 from .config import Config
-from .sessions import COOKIE, SESSION_SECONDS, Sessions
+from .sessions import SESSION_SECONDS, Sessions, cookie_name
 from .transport import Controller, ControllerUnavailable
 
 
@@ -61,15 +61,19 @@ class Security:
 
         async def secure_send(message):
             if message["type"] == "http.response.start":
+                websocket_origin = self.config.public_url.replace("https://", "wss://", 1).replace(
+                    "http://", "ws://", 1
+                )
                 headers = {
                     "cache-control": "no-store",
                     "x-content-type-options": "nosniff",
                     "referrer-policy": "no-referrer",
                     "x-frame-options": "DENY",
                     "permissions-policy": "microphone=(self), camera=(), geolocation=()",
-                    "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
-                    "strict-transport-security": "max-age=31536000",
+                    "content-security-policy": f"default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' {websocket_origin}; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
                 }
+                if self.config.secure_cookies:
+                    headers["strict-transport-security"] = "max-age=31536000"
                 message["headers"] = [
                     (key, value)
                     for key, value in message.get("headers", [])
@@ -81,7 +85,7 @@ class Security:
             await send(message)
 
         if request.url.path.startswith("/api/") or request.url.path == "/auth/logout":
-            user = self.sessions.get(request.cookies.get(COOKIE))
+            user = self.sessions.get(request.cookies.get(cookie_name(self.config.secure_cookies)))
             if not user:
                 return await JSONResponse({"error": "Sign in to continue."}, status_code=401)(
                     scope, receive, secure_send
@@ -102,6 +106,7 @@ class Security:
 
 def create_app(config: Config | None = None, controller: Controller | None = None) -> FastAPI:
     config = config or Config.from_env()
+    session_cookie = cookie_name(config.secure_cookies)
     sessions = Sessions(config.data_dir)
     remote = controller or Controller(config)
     connections: dict[str, set[WebSocket]] = {}
@@ -138,10 +143,12 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
     app.add_middleware(
         SessionMiddleware,
         secret_key=config.session_secret,
-        session_cookie="__Host-nox_voice_oauth",
+        session_cookie="__Host-nox_voice_oauth"
+        if config.secure_cookies
+        else "nox_voice_local_oauth",
         max_age=600,
         same_site="lax",
-        https_only=True,
+        https_only=config.secure_cookies,
     )
     app.add_middleware(
         TrustedHostMiddleware,
@@ -182,10 +189,10 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
             request.session.clear()
             response = RedirectResponse("/", status_code=303)
             response.set_cookie(
-                COOKIE,
+                session_cookie,
                 session_token,
                 max_age=SESSION_SECONDS,
-                secure=True,
+                secure=config.secure_cookies,
                 httponly=True,
                 samesite="lax",
                 path="/",
@@ -207,14 +214,16 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
 
     @app.post("/auth/logout")
     async def logout(request: Request):
-        token = request.cookies.get(COOKIE)
+        token = request.cookies.get(session_cookie)
         sessions.delete(token)
         for socket in list(connections.get(token, set())):
             with suppress(RuntimeError):
                 await socket.close(1008, "Signed out.")
         request.session.clear()
         response = JSONResponse({"ok": True})
-        response.delete_cookie(COOKIE, secure=True, httponly=True, samesite="lax")
+        response.delete_cookie(
+            session_cookie, secure=config.secure_cookies, httponly=True, samesite="lax"
+        )
         return response
 
     async def forward(method, path, payload=None, timeout=8):
@@ -292,7 +301,7 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
 
     @app.websocket("/ws")
     async def conversation(socket: WebSocket):
-        token = socket.cookies.get(COOKIE)
+        token = socket.cookies.get(session_cookie)
         if socket.headers.get("origin") != config.public_url or not sessions.get(token):
             await socket.close(1008)
             return
