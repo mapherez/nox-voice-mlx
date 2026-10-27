@@ -85,6 +85,9 @@ or silently route speech through a translation service.
 Use native Python 3.12 and Node 24. The root Python environment installs only the
 lightweight components and test tools, not the 7B model or its inference stack:
 
+Run these commands from the root of your repository checkout, wherever you
+cloned it:
+
 ```sh
 uv sync --locked
 uv run pytest -q

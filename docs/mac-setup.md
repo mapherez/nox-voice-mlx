@@ -9,12 +9,12 @@ weights. Use native ARM64 Python 3.12, not Rosetta Python.
 
 ## 1. Install
 
-Clone this repository, including the pinned NVIDIA reference submodule if you
-want to inspect it:
+Open a terminal in the root of your repository checkout, wherever you cloned it.
+The pinned NVIDIA reference submodule is only needed if you want to inspect it.
+From the repository root:
 
 ```sh
-git clone --recursive https://github.com/mapherez/nox-voice-mlx.git
-cd nox-voice-mlx/mac
+cd mac
 uv sync --locked --extra engine
 ```
 

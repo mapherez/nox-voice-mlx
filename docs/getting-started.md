@@ -22,11 +22,13 @@ examples below, replace `192.168.1.50` with your Mac Studio's private LAN IP and
 
 ### 1a. Install the dependencies
 
-Open Terminal on the **Mac Studio**. Use the existing repository, with the new
-application files present. If it is in the usual location:
+Open Terminal on the **Mac Studio**, in the **root of your repository checkout**:
+the directory containing `README.md`, `mac/`, `frontend/` and `deploy/`. You can
+clone or keep the repository anywhere and name its directory however you like.
+From that directory, run:
 
 ```sh
-cd ~/Documents/GitHub/nox-voice-mlx/mac
+cd mac
 uv --version
 ```
 
@@ -143,24 +145,24 @@ a domain managed by Cloudflare.
 
 ### 3a. Prepare the deployment directory
 
-On the **homelab host**, create a dedicated directory, for example
-`~/nox-voice/`. Copy these files from the updated repository into it:
+On the **homelab host**, create a dedicated deployment directory **wherever you
+choose**, and open a terminal in it. Copy these files from the updated repository
+into that directory:
 
 | Repository file | Destination on the homelab |
 | --- | --- |
-| `deploy/compose.yaml` | `~/nox-voice/compose.yaml` |
-| `deploy/.env.example` | `~/nox-voice/.env` |
+| `deploy/compose.yaml` | `compose.yaml` |
+| `deploy/.env.example` | `.env` |
 
-In a terminal on the homelab:
+From this deployment directory on the homelab:
 
 ```sh
-cd ~/nox-voice
 umask 077
 mkdir -p secrets
 ```
 
 Using a secure file transfer such as SFTP, copy **only** the three files from the
-Mac's `tls/gateway/` directory into `~/nox-voice/secrets/`:
+Mac's `tls/gateway/` directory into `secrets/` inside your deployment directory:
 
 ```text
 secrets/ca.crt
@@ -186,7 +188,7 @@ Keep its **client ID** and **client secret** for the next steps. The ID goes in
 `.env`; the secret goes in a file. See the [official Google instructions](https://developers.google.com/identity/protocols/oauth2/web-server#creatingcred)
 if creating a client for the first time.
 
-Edit `~/nox-voice/.env` on the homelab:
+Edit `.env` inside your deployment directory on the homelab:
 
 ```env
 NOX_VOICE_IMAGE_TAG=latest
@@ -219,8 +221,9 @@ browser-facing TLS connection.
 
 ### 3d. Save the remaining secrets
 
-In **Bash on the homelab**, from `~/nox-voice/`, enter each secret at the hidden
-prompt. Paste just its value, without quotation marks or a surrounding command:
+In **Bash on the homelab**, from your deployment directory, enter each secret at
+the hidden prompt. Paste just its value, without quotation marks or a surrounding
+command:
 
 ```bash
 umask 077
@@ -239,7 +242,7 @@ Run the secret generation only during initial setup; retain `session-secret`
 when updating the app. Check that all six files now exist:
 
 ```text
-nox-voice/
+your-deployment-directory/
 ├── compose.yaml
 ├── .env
 └── secrets/
@@ -265,7 +268,7 @@ UID 10001 ownership, since Compose mounts each file individually.
 
 ### 3e. Pull and start
 
-Still on the homelab, from `~/nox-voice/`:
+Still on the homelab, from your deployment directory:
 
 ```sh
 docker compose --profile tunnel config --quiet
