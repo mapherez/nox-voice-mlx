@@ -10,5 +10,5 @@
 - Inter Variable is distributed by `@fontsource-variable/inter` under SIL OFL
   1.1; the font and license are included with that dependency. Fonts are served
   locally, not requested from a font CDN at runtime.
-- The sphere is original procedural rendering. The user's Vecteezy reference is
-  design inspiration and is not redistributed as an application asset.
+- The sphere is procedural rendering implemented in the frontend. No external
+  reference artwork is redistributed as an application asset.

@@ -1,168 +1,177 @@
-# Start here: Mac → image → homelab → browser
+# Installation
 
-Follow this guide from top to bottom for the first installation. The other
-documents are reference material; you do not need to switch between them.
+Follow this guide in order. Complete each checkpoint before continuing. The
+reference documents are for later configuration and maintenance.
 
-There are only two installations:
+## Before starting
 
-| Machine | What runs there | What you install |
-| --- | --- | --- |
-| Mac Studio | Controller and PersonaPlex engine | Python dependencies with `uv`, model files and certificates |
-| Homelab Docker host | Webapp, including the frontend and gateway | Compose file, environment file and secrets; the image comes from GHCR |
-| MacBook / iPhone | Browser | Nothing from this repository |
+You need:
 
-The `frontend/` directory is for development. **You do not need Node, npm, or a
-separate frontend installation to use the published image.**
+- An **Apple Silicon Mac**, with native ARM64 Python support and enough memory
+  and disk for PersonaPlex. Allow approximately 17 GB for model downloads, plus
+  dependencies and download cache. Memory use varies with precision.
+- **uv** on the Mac. Use the [official installation instructions](https://docs.astral.sh/uv/getting-started/installation/)
+  if it is not installed.
+- A **Docker host** with Docker Engine or Docker Desktop, Docker Compose and the
+  OpenSSL command-line tool. The webapp image supports amd64 and arm64.
+- A Hugging Face account with access to the official model, and a Google account
+  and OAuth client for browser sign-in.
+- A private network connection from the Docker host to the Mac. They may be the
+  same physical computer, but Docker must be able to reach the Mac's LAN IP.
 
-Keep the default controller port **8443** for this first installation. In the
-examples below, replace `192.168.1.50` with your Mac Studio's private LAN IP.
-The webapp starts at **http://localhost:8080** on the Docker host. A public domain
-or tunnel is optional and can be configured later.
+This guide uses the default ports: **8443** for the Mac controller, **8000** for
+its private worker and **8080** for the browser. The controller and worker ports
+must differ. Node/npm is only needed for frontend development, not installation.
 
-## 1. On the Mac Studio: prepare the native service
+## 1. Install the native Mac components
 
-### 1a. Install the dependencies
+**Where:** Terminal on the Mac that will run the model.
 
-Open Terminal on the **Mac Studio**, in the **root of your repository checkout**:
-the directory containing `README.md`, `mac/`, `frontend/` and `deploy/`. You can
-clone or keep the repository anywhere and name its directory however you like.
-From that directory, run:
+Clone this repository or download and extract it using the project's **Code**
+button. Keep it in any directory you choose. From its root
+(the folder containing `README.md`, `mac/` and `deploy/`), run:
 
 ```sh
 cd mac
-uv --version
 ```
 
-If `uv` is missing and Homebrew is already installed, install it with
-`brew install uv`. Otherwise use the [official uv installation guide](https://docs.astral.sh/uv/getting-started/installation/),
-then reopen Terminal and return to this directory.
+Alternatively, copy the contents of `mac/` to a directory of your choice before
+installing, and open Terminal inside that copy. Exclude any existing `.venv/`.
+The installation directory must contain `pyproject.toml`, `uv.lock`, `controller/`,
+`engine/` and `weights/`.
 
-Install the Mac dependencies:
+**Run all remaining Mac commands from this installation directory.**
 
 ```sh
+uv --version
 uv python install 3.12
 uv sync --locked --extra engine --python 3.12
 ```
 
-**Checkpoint:** the command finishes successfully and `mac/.venv/` exists.
-Stay in the `mac/` directory for all remaining Mac commands.
+**Checkpoint:** installation finishes successfully. A hidden `.venv/` folder is
+created in the installation directory.
 
-### 1b. Download the model once
+## 2. Prepare the model
 
-In your browser, sign in to [the official PersonaPlex model page](https://huggingface.co/nvidia/personaplex-7b-v1)
-and accept its access terms yourself. Create a Hugging Face read token authorized
-to download that model; [token instructions](https://huggingface.co/docs/hub/security-tokens).
-Allow space for approximately 17 GB of model assets, plus dependencies and the
-download cache.
+**Where:** the same Mac terminal and installation directory.
 
-Back in the Mac's default **zsh** Terminal, enter the token at a hidden prompt:
+1. Sign in to the [official PersonaPlex model page](https://huggingface.co/nvidia/personaplex-7b-v1)
+   and accept its access terms.
+2. Create a Hugging Face read token authorized for that model. See
+   [Hugging Face token instructions](https://huggingface.co/docs/hub/security-tokens).
+3. In the Mac's default **zsh** shell, run this line on its own:
+
+   ```zsh
+   read -r -s "HF_TOKEN?Hugging Face token: "
+   ```
+
+   When the prompt appears, paste the token and press Enter. Input is hidden.
+   The token is entered at the prompt, not added to the command text.
+
+4. Make it available to the download command:
+
+   ```zsh
+   printf '\n'
+   export HF_TOKEN
+   ```
+
+5. Download and prepare the assets:
+
+   ```sh
+   uv run --locked --extra engine nox-voice prepare-model
+   ```
+
+6. Wait for that command to succeed, then verify the local files:
+
+   ```sh
+   uv run --locked --extra engine nox-voice prepare-model --check
+   ```
+
+7. Remove the token from this shell's environment:
+
+   ```sh
+   unset HF_TOKEN
+   ```
+
+The first model command downloads official files, extracts the voice prompts and
+creates an integrity manifest. The second checks the prepared files offline.
+Neither command trains or reconstructs the model.
+
+**Checkpoint:** verification prints `Model verified at official revision`.
+Keep tokens out of command arguments, source files and shared logs.
+
+## 3. Configure and start the Mac controller
+
+**Where:** the same Mac terminal and installation directory.
+
+Find the Mac's actual LAN IPv4 address in **System Settings → Network → the
+active connection → Details → TCP/IP**. Choose an address assigned to this Mac
+that the Docker host can reach. A DHCP reservation helps keep it stable.
+
+In **zsh**, enter the address at this prompt:
 
 ```zsh
-read -r -s "HF_TOKEN?Hugging Face token: "
-printf '\n'
-export HF_TOKEN
-uv run --locked --extra engine nox-voice prepare-model
-uv run --locked --extra engine nox-voice prepare-model --check
-unset HF_TOKEN
+read -r "NOX_MAC_IP?Mac LAN IPv4 address: "
 ```
 
-Paste only the token at that prompt. Do not put it in `.env`, a command argument,
-the repository or this chat. The download can take a while.
-
-**Checkpoint:** verification finishes with `Model verified at official revision`.
-If the download or verification fails, resolve that error before continuing.
-
-### 1c. Create the configuration and certificates
-
-Find the Mac Studio's LAN IP in **System Settings → Network → your active
-connection → Details → TCP/IP**. Reserve that address in your router's DHCP
-settings so that it stays the same. Use that IP in this command:
+Create the configuration and certificates:
 
 ```sh
-uv run --locked --extra engine nox-voice setup --host 192.168.1.50 --port 8443
+uv run --locked --extra engine nox-voice setup --host "$NOX_MAC_IP" --port 8443
 ```
 
-Run setup **once**. If you already ran it successfully, keep the existing
-configuration instead of repeating it. Its default location is:
+Run setup once. If it reports an existing configuration, do not delete it or
+repeat setup to fix unrelated Docker or login errors; consult the
+[Mac reference](mac-setup.md).
 
-```text
-~/Library/Application Support/NoX Voice/controller.json
-```
+Save these two outputs for the Docker deployment:
 
-You do not edit `config.py`. The JSON file is the installed configuration.
-The `port` in that file and the port in the homelab's controller URL must match.
-Changing only the port requires a controller restart; changing the IP also
-requires a server certificate for the new IP.
+- **Gateway URL:** the exact HTTPS controller URL printed by setup.
+- **Client directory:** the directory containing `ca.crt`, `client.crt` and
+  `client.key`. Only these three files are transferred to the Docker host.
 
-**Checkpoint:** setup prints the controller URL and a gateway bundle directory.
-With the default configuration, that directory is:
+The default client directory is:
 
 ```text
 ~/Library/Application Support/NoX Voice/tls/gateway/
 ```
 
-It contains `ca.crt`, `client.crt` and `client.key`. You will copy these three
-files to the homelab in step 3. Keep the rest of `tls/` on the Mac.
+`~` means the current user's home directory. In Finder, use **Go → Go to Folder**
+and paste that path to open the normally hidden Library directory.
 
-### 1d. Start the controller
+Start the controller manually:
 
 ```sh
 uv run --locked --extra engine nox-voice controller
 ```
 
-**Checkpoint:** Terminal shows the controller URL and says the engine is stopped.
-That is expected: the model will be started from Settings later.
+**Checkpoint:** it shows `Application startup complete` and remains running
+without a bind error. `Engine is stopped` is expected at this stage.
 
-Leave this terminal open and the Mac awake. For now, use manual startup; configure
-optional automatic startup only after the first successful conversation.
-Do not test this private URL by opening it in a browser: it requires the gateway's
-client certificate.
+Leave this terminal open and the Mac awake. **Ctrl+C stops the controller and
+its worker.** This command does not enable startup at login. Do not open the
+controller URL in a browser; it is a private API requiring a client certificate.
 
-## 2. On GitHub: make the webapp image available
+## 4. Prepare the Docker deployment directory
 
-The homelab cannot pull an image before the first successful publication.
-Creating the workflow file locally does not publish it.
+**Where:** the Docker host. Use a new terminal in a dedicated directory of your
+choice; this is the **deployment directory** for all Docker commands below.
 
-1. The application changes, including `.github/workflows/webapp.yaml`, must be
-   committed and pushed to `main` in your GitHub repository.
-2. In the repository's **Actions** tab, wait for **Webapp checks and Docker image**
-   to finish successfully. A push to `main` triggers it.
-3. In your GitHub Packages settings, make `nox-voice-mlx-webapp` **Public** if it
-   was initially created private.
+Copy these files from the repository:
 
-**Checkpoint:** this image and tag are published and publicly accessible:
+| Repository file       | Destination in the deployment directory |
+| --------------------- | --------------------------------------- |
+| `deploy/compose.yaml` | `compose.yaml`                          |
+| `deploy/.env.example` | `.env`                                  |
 
-```text
-ghcr.io/mapherez/nox-voice-mlx-webapp:latest
-```
-
-This guide does not commit, push or publish anything automatically.
-
-## 3. On the homelab: configure and start the webapp
-
-This first-install path uses **localhost**, without a reverse proxy or tunnel.
-It assumes a Linux host with Docker Engine and the `docker compose` plugin.
-
-### 3a. Prepare the deployment directory
-
-On the **homelab host**, create a dedicated deployment directory **wherever you
-choose**, and open a terminal in it. Copy these files from the updated repository
-into that directory:
-
-| Repository file | Destination on the homelab |
-| --- | --- |
-| `deploy/compose.yaml` | `compose.yaml` |
-| `deploy/.env.example` | `.env` |
-
-From this deployment directory on the homelab:
+Create the secrets directory:
 
 ```sh
 umask 077
 mkdir -p secrets
 ```
 
-Using a secure file transfer such as SFTP, copy **only** the three files from the
-Mac's `tls/gateway/` directory into `secrets/` inside your deployment directory:
+Securely transfer the three files from the Mac's client directory into it:
 
 ```text
 secrets/ca.crt
@@ -170,83 +179,102 @@ secrets/client.crt
 secrets/client.key
 ```
 
-The engine and model files stay on the Mac. You do not copy `frontend/`, install
-npm, or clone the whole repository on the homelab.
+The `gateway/` directory at the repository root is application source code; it
+is not the generated certificate directory. The model and engine remain on the Mac.
 
-### 3b. Configure Google login
+**Checkpoint:** `compose.yaml`, `.env` and those three files are in the deployment
+directory. Do not copy the Mac's CA private key or server private key.
 
-In your Google Cloud project, create an OAuth client with application type
-**Web application**. Configure its consent screen and add your account as a test
-user if the project requires it. Set this exact authorized redirect URI:
+## 5. Configure Google login and the environment
+
+**Where:** Google Cloud in a browser, then `.env` on the Docker host.
+
+Create an OAuth client with application type **Web application** in a Google
+Cloud project. Complete the consent configuration and add the allowed account
+as a test user if the project requires it. Follow the
+[official Google instructions](https://developers.google.com/identity/protocols/oauth2/web-server#creatingcred)
+if needed.
+
+Register this **Authorized redirect URI** for the default local port:
 
 ```text
 http://localhost:8080/auth/google/callback
 ```
 
-Keep its **client ID** and **client secret** for the next steps. The ID goes in
-`.env`; the secret goes in a file. See the [official Google instructions](https://developers.google.com/identity/protocols/oauth2/web-server#creatingcred)
-if creating a client for the first time.
+If you choose a different `NOX_VOICE_WEB_PORT`, use that same port in the local
+callback. Authorized JavaScript origins are not required by this server-side
+login flow.
 
-Edit `.env` inside your deployment directory on the homelab:
+Keep the Google **client ID** and **client secret**. They are different values.
+Edit the copied `.env` template:
 
-```env
-NOX_VOICE_IMAGE_TAG=latest
-NOX_VOICE_WEB_PORT=8080
-# Optional HTTPS domain; localhost stays available when this is configured.
-NOX_VOICE_PUBLIC_URL=
-NOX_VOICE_OWNER_EMAIL=your-google-email@example.com
-NOX_VOICE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-NOX_VOICE_CONTROLLER_URL=https://192.168.1.50:8443
-```
+| Variable                     | What to enter                                           |
+| ---------------------------- | ------------------------------------------------------- |
+| `NOX_VOICE_WEB_PORT`         | The local browser port; keep `8080` initially           |
+| `NOX_VOICE_OWNER_EMAIL`      | The verified Google email allowed to sign in            |
+| `NOX_VOICE_GOOGLE_CLIENT_ID` | The client ID from Google                               |
+| `NOX_VOICE_CONTROLLER_URL`   | The exact Gateway URL printed by Mac setup              |
+| `NOX_VOICE_PUBLIC_URL`       | Leave empty for now; an HTTPS domain can be added later |
+| `NOX_VOICE_ALLOWED_ORIGINS`  | Leave empty unless adding another trusted HTTPS address |
 
-The last line must use the **Mac Studio's IP and controller port**, not the
-homelab's IP. The owner email must be the verified Google account you will use.
+The controller URL identifies the **Mac**, not the Docker host. The webapp port
+does not change the Mac controller's port.
 
-### 3c. Local access
+**Checkpoint:** the three required values (owner email, client ID and controller
+URL) have been filled in. The Google client secret is saved in the next step,
+not in `.env`.
 
-No reverse proxy or Cloudflare configuration is needed for localhost. Leave the
-`tunnel` profile disabled. The Compose file publishes the webapp only on the
-Docker host's loopback address, at port 8080.
+## 6. Create the two remaining secret files
 
-`NOX_VOICE_WEB_PORT` sets the host port and automatically enables the matching
-localhost URLs. You do not need to repeat the local URL in another variable.
-`NOX_VOICE_PUBLIC_URL` optionally adds your HTTPS domain without removing local
-access. You can use both at the same time; register a Google callback for each
-address you use. The login returns to the address where it started. The Mac
-controller still uses HTTPS and client certificates.
+**Where:** the deployment directory on the Docker host.
 
-`localhost` means the device running your browser. To test a headless homelab
-from another computer, use SSH forwarding from that computer:
-
-```sh
-ssh -N -L 8080:127.0.0.1:8080 YOUR_USER@YOUR_HOMELAB_HOST
-```
-
-Then open `http://localhost:8080` on that computer. For direct LAN access from a
-MacBook or iPhone, use a browser-trusted HTTPS hostname on the LAN. Plain HTTP
-at a LAN IP does not provide browser microphone access. Google login still
-contacts Google even when the webapp itself is only locally accessible.
-
-### 3d. Save the remaining secrets
-
-In **Bash on the homelab**, from your deployment directory, enter each secret at
-the hidden prompt. Paste just its value, without quotation marks or a surrounding
-command:
+Use **Bash** for the hidden-input command below. If using another shell, run
+`bash` first and stay in it for this step. Run the prompt line on its own, paste only
+the Google client secret at the prompt, then press Enter:
 
 ```bash
-umask 077
 read -r -s -p 'Google OAuth client secret: ' nox_google_secret
+```
+
+Save its value and generate a separate random signing key:
+
+```sh
 printf '\n'
+umask 077
 printf '%s' "$nox_google_secret" > secrets/google-client-secret
 unset nox_google_secret
 openssl rand -hex 32 > secrets/session-secret
 ```
 
-Run the secret generation only during initial setup; retain `session-secret`
-when updating the app. Check that all five files now exist:
+The Google secret file contains only the secret value, without `NAME=`, quotation
+marks or JSON. Generate `session-secret` once and keep it during updates.
+
+| File                          | Purpose                                       |
+| ----------------------------- | --------------------------------------------- |
+| `ca.crt`                      | Verify the Mac controller's certificate       |
+| `client.crt` and `client.key` | Authenticate the gateway to the Mac           |
+| `google-client-secret`        | Authenticate the app's OAuth client to Google |
+| `session-secret`              | Sign temporary login-state cookies            |
+
+On a standard **Linux Docker host**, make the files readable by the container's
+group while keeping your deployment user as their owner:
+
+```sh
+chmod 700 secrets
+sudo chown "$(id -u):10001" secrets/*
+chmod 640 secrets/*
+chmod 600 .env
+```
+
+This applies to this deployment's dedicated `secrets/` directory. You retain
+read/write access; group `10001` has read access. Docker Desktop and rootless or
+user-mapped Docker installations can map host permissions differently; see the
+[deployment reference](deployment.md#secret-file-permissions) if access fails.
+
+**Checkpoint:** the deployment directory contains exactly the required files:
 
 ```text
-your-deployment-directory/
+deployment-directory/
 ├── compose.yaml
 ├── .env
 └── secrets/
@@ -257,21 +285,11 @@ your-deployment-directory/
     └── session-secret
 ```
 
-Give the containers' UID access to this dedicated secrets directory:
+Cloudflare is not needed for this local installation.
 
-```sh
-chmod 700 secrets
-chmod 600 secrets/*
-sudo chown 10001:10001 secrets/*
-chmod 600 .env
-```
+## 7. Start the webapp
 
-Keep the directory itself owned by your deployment user. Only the files need
-UID 10001 ownership, since Compose mounts each file individually.
-
-### 3e. Pull and start
-
-Still on the homelab, from your deployment directory:
+**Where:** the deployment directory on the Docker host.
 
 ```sh
 docker compose config --quiet
@@ -280,27 +298,45 @@ docker compose up -d
 docker compose ps
 ```
 
-**Checkpoint:** `webapp` is healthy. No tunnel service is started. If the image
-cannot be pulled, check step 2 before troubleshooting the Mac.
-The homelab must be able to reach the Mac's LAN IP on TCP port 8443; permit that
-connection in your LAN/VLAN/firewall rules if needed.
+**Checkpoint:** `webapp` reports **healthy**. Only the webapp service starts;
+the optional tunnel profile remains off. If image pulling reports `unauthorized`,
+use [GHCR troubleshooting](deployment.md#image-pull-is-unauthorized) before
+changing anything on the Mac.
 
-## 4. In the browser: use the app
+## 8. Open the app and start a conversation
 
-1. Open `http://localhost:8080` on the Docker host, or through the SSH forward
-   described above, and sign in with the configured Google account.
-2. Open **Settings → Connection → Test connection**. It should confirm the Mac
-   controller is reachable.
-3. In **Settings → Engine**, click **Start engine** and wait for **Ready**.
-4. Close Settings, click **Start conversation**, and allow microphone access.
+**Where:** a browser on the Docker host.
 
-The Mac terminal stays open during this first test. The engine starts stopped
-after each controller startup; that does not mean the installation failed.
+1. Open **http://localhost:8080**, using the configured port if you changed it.
+2. Sign in with the Google account in `NOX_VOICE_OWNER_EMAIL`.
+3. Open **Settings → Connection → Test connection**.
+4. Open **Settings → Engine → Start engine** and wait for **Ready**.
+5. Close Settings, click **Start conversation**, and allow microphone access.
 
-If a checkpoint fails, stop at that checkpoint and report its step number and
-error text, with secrets removed. Do not rerun setup or replace certificates to
-fix an unrelated image, login or tunnel error.
+The sphere reacts to assistant playback only. **Mute** disables microphone
+capture while keeping assistant playback active. **End conversation** ends the
+audio session. **Stop** in Engine settings unloads the model while leaving the
+controller available. **Ctrl+C in the Mac terminal** stops the controller too.
 
-After the first successful call, use [Mac reference](mac-setup.md) for optional
-autostart and certificate renewal, or [deployment reference](deployment.md) for
-updates, LAN HTTPS access and optional external access.
+### If the browser is on another device
+
+`localhost` means the device running the browser, not a remote Docker host.
+For a desktop browser, open an SSH forward from that computer to the Docker host
+(keep its local port equal to `NOX_VOICE_WEB_PORT`), then use the localhost URL.
+The [deployment reference](deployment.md#access-from-another-device) has the steps.
+
+For direct access from another LAN device, including mobile browsers, configure
+a trusted HTTPS address. Plain HTTP at a LAN IP does not provide microphone
+access. This does not require public exposure.
+
+## Optional: add an HTTPS domain
+
+After local use works, follow [domain access](deployment.md#add-an-https-domain).
+Configure the domain once and register its Google callback. Localhost remains
+available alongside it; there is no need to switch `.env` values between local
+and domain access. Cloudflare Tunnel is optional.
+
+For any failed checkpoint, use [troubleshooting](deployment.md#troubleshooting)
+and report the command and error with secrets removed. Model performance and
+browser compatibility should be checked on the target hardware; see
+[validation](validation.md).

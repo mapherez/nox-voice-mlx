@@ -1,5 +1,8 @@
 # Architecture and security boundaries
 
+For installation, start with [Installation](getting-started.md). This page
+describes the implementation and its trust boundaries.
+
 The production path is frontend → authenticated gateway → mutually authenticated
 Mac controller → authenticated loopback worker. Google OAuth and Hugging Face
 downloads are separate from inference. The original NVIDIA reference server and
@@ -29,8 +32,8 @@ when a reverse proxy connects to the gateway over HTTP.
 
 OAuth state, callbacks, cookie security and CSP follow the selected origin.
 Unsafe API methods require that same Origin and the session's CSRF token.
-WebSockets require a valid session bound to that exact origin. Sessions are checked during
-streams and revoked on logout. Requests and audio frames are bounded. All static
+WebSockets require a valid session bound to that exact origin. Sessions are
+checked during streams and revoked on logout. Requests and audio frames are bounded. All static
 scripts, styles and fonts are self-hosted; CSP blocks third-party script/API
 connections. Access logging is disabled and application telemetry is disabled.
 
@@ -101,7 +104,7 @@ uses Google login even when the request originates inside the home network.
 Cloudflare is optional. Localhost runs without a reverse proxy or tunnel. A
 trusted HTTPS hostname can also resolve directly to a LAN reverse proxy without
 any public route. The configured `NOX_VOICE_PUBLIC_URL` adds an optional browser
-origin and does not replace localhost or require public exposure. Only enabling the optional tunnel
-profile starts its connector. Google authentication still requires Internet
+origin and does not replace localhost or require public exposure. Only enabling
+the optional tunnel profile starts its connector. Google authentication still requires Internet
 access to Google; inference and local audio transport do not use Cloudflare in
 a localhost or LAN-only deployment.

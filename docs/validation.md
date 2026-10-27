@@ -1,65 +1,81 @@
-# Validation and runtime acceptance
+# Validation
 
-## Checks completed during implementation
+Installation steps are in [Installation](getting-started.md). This page describes
+development checks and the acceptance work for a deployment. Test results from
+one machine do not establish model throughput or browser compatibility on another.
 
-The local implementation checks passed with Python 3.12 and Node 24:
+## Automated checks
 
-| Check | Result |
-| --- | --- |
-| Python suite | 60 tests passed |
-| Browser audio resampling suite | 4 tests passed, including 24/44.1/48 kHz input and mute |
-| Native MLX smoke test | Small model warmup at full/4/5/6/8-bit precision, cache restore and unsafe pickle rejection passed |
-| Frontend production build | TypeScript and Vite passed |
-| Dependency audits | No known vulnerabilities reported by npm audit or pip-audit for the installed gateway/controller and native engine environments |
-| Formatting and static checks | Ruff, Prettier and Git whitespace checks passed |
-| Lockfiles | Root, gateway and Mac lockfiles verified offline |
-| Real transport integration | PCM roundtrip through gateway, mutual TLS controller and authenticated echo worker passed |
-| Localhost HTTP | Mocked Google login/state cookies, authenticated PCM streaming, CSRF/origin/host rejection and logout passed; controller TLS remains required |
-| Simultaneous local/domain access | One gateway serves both origins; callbacks, secure cookies, CSRF, sessions and PCM streams remain bound to their starting origin, including behind a simulated HTTP proxy |
-| Local Compose configuration | Official Compose CLI validated only `webapp` starts by default, binds `127.0.0.1:8080` and needs no Cloudflare token |
-| Visual review | Compiled frontend reviewed in Chrome at desktop and emulated 375 px iPhone width, including light/dark themes and the Settings drawer |
+**Where:** repository root, with uv installed.
 
-The echo worker and browser preview use synthetic data. They do not establish
-real model performance or browser microphone compatibility. The production build
-currently reports a non-failing chunk-size warning for the Three.js bundle
-(approximately 542 kB minified, 137 kB compressed).
+```sh
+uv sync --locked
+uv run --locked ruff check .
+uv run --locked pytest -q
+uv run --locked pip-audit --skip-editable --progress-spinner off
+```
 
-Docker Engine was not available in the development environment, so the image has
-not been built locally or published. Actual Google login, the full PersonaPlex model,
-Cloudflare routing and physical iPhone audio remain deployment acceptance work.
+This environment installs the lightweight controller/gateway and test tools. It
+does not install the full inference stack or download the model. Some integration
+tests open temporary loopback listeners and use synthetic audio/certificates.
+
+**Where:** `frontend/`, with Node 24 and npm installed.
+
+```sh
+npm ci
+npm run format:check
+npm test
+npm run build
+npm audit --audit-level=high
+```
+
+The suites cover authentication policy, session expiry/revocation, CSRF, Host and
+Origin validation, concurrent local/domain access, callback origin binding,
+mutual TLS transport, process lifecycle, model-asset validation and continuous
+audio resampling. Provider and model mocks do not replace real deployment tests.
+Dependency audits report known advisories at execution time, not a guarantee
+that all code is free of vulnerabilities.
+
+## Native compatibility smoke test
+
+**Where:** repository root on an Apple Silicon Mac.
+
+```sh
+uv run --project mac --locked --extra engine python tests/mac/native_smoke.py
+```
+
+This loads a small test model, exercises full/4/5/6/8-bit precision, cache
+restoration and restricted voice loading. It rejects an unsafe pickle payload.
+It does not load the full PersonaPlex checkpoint or codec, so it does not measure
+real conversation quality or performance.
+
+The inherited full-model comparison diagnostic is excluded from the default
+suite. See [port history](original-port.md) for its context.
 
 ## Deployment acceptance
 
-Automated checks cover authentication policy, CSRF/origin, session revocation,
-asset traversal/tampering, bounded requests, process lifecycle, mutual TLS and
-streaming PCM resampling. They do not claim that a 7B model has been loaded merely
-because the mocked lifecycle tests pass.
+Use the actual model, identity provider configuration and target devices:
 
-Before considering a deployment ready, validate with the actual model, Google
-OAuth project, Docker host and Cloudflare route:
+| Area             | Verify                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| Access           | Localhost remains usable with and without the optional external route                                        |
+| Multiple origins | Local and configured HTTPS logins return to their starting address; both can remain signed in simultaneously |
+| Authentication   | The configured verified account succeeds and a different account is rejected                                 |
+| Transport        | A valid client bundle connects; missing, incorrect or expired certificates fail                              |
+| Lifecycle        | Repeated Start creates one worker; Stop cancels loading and releases model memory                            |
+| Isolation        | A second conversation cannot reset or modify the active conversation                                         |
+| Settings         | Voice, persona and precision changes work while idle; active conversations block changes                     |
+| Audio            | Capture, mute, interruption and playback work on the intended desktop and mobile browsers                    |
+| Visualization    | Only assistant playback drives the sphere; microphone input does not                                         |
+| Accessibility    | Drawer keyboard/focus, themes, narrow layouts, reduced motion and WebGL fallback work                        |
+| Recovery         | Disconnects, backgrounding, logout and device locking stop capture and require an explicit new start         |
+| Network          | Long calls keep bounded queues and acceptable latency on each enabled route                                  |
+| Privacy          | Persistent files and logs contain no conversation audio, transcripts or credentials                          |
 
-- Sign in only with the configured verified account; reject another account.
-- Verify valid client certificates connect and absent/wrong/expired certificates
-  fail. Keep verification enabled on both sides.
-- Start twice and confirm only one model process exists. Cancel while loading.
-- Confirm startup phases, all 18 voices and 4/5/6/8-bit/full precision settings.
-- Stop during a conversation and verify the process exits and its memory is
-  released. Settings must still load and Restart must work.
-- Open two devices and confirm the second cannot change/reset an active session.
-- Test the microphone, mute, interruption and playback on Chrome on the MacBook
-  and Safari/Chrome on the iPhone. Permission requires a user gesture and HTTPS.
-- Confirm the sphere reacts to assistant playback only, including when the
-  microphone is muted. It must not animate in response to microphone input alone.
-- Test light/dark/system themes, drawer focus/keyboard, 320 px and iPhone widths,
-  reduced motion, and the 2D fallback if WebGL cannot initialize.
-- Run a long call through Cloudflare, observing latency/real-time factor and
-  ensuring browser queues do not grow indefinitely. Disconnect Wi-Fi, background
-  the page, sign out and lock the phone; verify capture ends and requires a new
-  explicit start.
-- Listen to English and Portuguese samples. Document Portuguese limitations
-  rather than promising multilingual quality from an English model.
-- Confirm no audio or transcripts appear in persistent files, logs or external
-  network requests. Persona settings are intentionally persisted on the Mac.
+Microphone access requires a secure browser context: localhost or trusted HTTPS.
+Measure quality in the languages intended for deployment. The official model
+supports English; other languages require evaluation rather than an assumed
+quality guarantee.
 
-The visual frontend is a browser workload. Model throughput remains a native Mac
-workload; performance must be measured on the target hardware and network.
+If an external tunnel is enabled, repeat long-call and recovery checks through
+that route. Local-only deployments do not require Cloudflare acceptance checks.

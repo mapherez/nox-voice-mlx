@@ -1,147 +1,164 @@
-# Native Mac setup
+# Mac reference
 
-For your first installation, follow the complete, ordered [Start here guide](getting-started.md).
-This document is the Mac reference for advanced settings and maintenance.
+For the first installation, follow [Installation](getting-started.md). This page
+covers configuration and maintenance of the native Mac service.
 
-The controller and engine run natively on Apple Silicon, outside Docker. The
-controller stays lightweight; only its child worker loads model libraries and
-weights. Use native ARM64 Python 3.12, not Rosetta Python.
+## Installation directory
 
-## 1. Install
+The `mac/` component is independent of the Docker webapp. It can run from a
+repository checkout or from a standalone copy in a directory of your choice.
+It contains `pyproject.toml`, `uv.lock`, `controller/`, `engine/` and `weights/`.
+Commands on this page run from that installation directory.
 
-Open a terminal in the root of your repository checkout, wherever you cloned it.
-The pinned NVIDIA reference submodule is only needed if you want to inspect it.
-From the repository root:
+The engine requires Apple Silicon and native ARM64 Python 3.12. Install the
+`engine` extra with the supplied uv lockfile; the standalone NVIDIA reference
+server and its requirements are not used by this application.
 
-```sh
-cd mac
-uv sync --locked --extra engine
-```
+## Configuration and data locations
 
-The production worker does not install or execute the NVIDIA server's old pinned
-requirements. `npm install` is not needed on the Mac engine host.
+| Item                       | Default location                                              |
+| -------------------------- | ------------------------------------------------------------- |
+| Controller configuration   | `~/Library/Application Support/NoX Voice/controller.json`     |
+| Voice/persona settings     | `~/Library/Application Support/NoX Voice/voice-settings.json` |
+| TLS files                  | `~/Library/Application Support/NoX Voice/tls/`                |
+| Gateway certificate bundle | `~/Library/Application Support/NoX Voice/tls/gateway/`        |
+| Model assets               | `weights/` in the installation directory                      |
+| Python environment         | `.venv/` in the installation directory                        |
 
-For a small native compatibility/security smoke test without downloading model
-weights, run from the repository root after installing the engine extra:
+`~` means the current user's home directory. These are application defaults, not
+a required location for the repository. Finder's **Go → Go to Folder** opens the
+hidden Library path. Installed configuration belongs in `controller.json`;
+`controller/config.py` defines defaults and validation, not per-install settings.
 
-```sh
-mac/.venv/bin/python tests/mac/native_smoke.py
-```
-
-It validates a small MLX model at all five precisions, cache isolation and
-restricted voice loading. It does not replace testing the actual 7B checkpoint.
-
-## 2. Prepare the model
-
-Log in to Hugging Face and accept the access terms at:
-
-https://huggingface.co/nvidia/personaplex-7b-v1
-
-Create a fine-grained read token authorized for that model. Set `HF_TOKEN` in your
-local shell without committing it or putting its value in a command argument.
-For example, use your shell's hidden-input mechanism or a local secret manager.
-
-From `mac/`, run:
-
-```sh
-uv run --locked --extra engine nox-voice prepare-model
-uv run --locked --extra engine nox-voice prepare-model --check
-```
-
-This downloads only the official weights, codec, text tokenizer and voice archive
-to `mac/weights/`. The checked-in text tokenizer will be verified against the
-official version. Voice archive extraction accepts only the 18 named `.pt` files
-and rejects traversal, links, duplicates and oversized entries.
-
-The first preparation resolves the official repository's current commit and
-records it in `manifest.json`; runtime verifies that exact manifest offline.
-For a controlled re-install, supply `--revision FULL_40_CHARACTER_COMMIT_HASH`.
-Stop the engine before replacing prepared files. A custom location is supported
-with `prepare-model --weights-dir /absolute/path` and the matching setup option.
-
-You can unset `HF_TOKEN` after preparation. The worker strips inherited token and
-secret variables and sets `HF_HUB_OFFLINE=1` and `HF_HUB_DISABLE_TELEMETRY=1`.
-
-## 3. Create the controller configuration and certificates
-
-Reserve a private IP for this Mac in your router/DHCP server. Replace this example
-with that IP:
-
-```sh
-uv run --locked --extra engine nox-voice setup --host 192.168.1.50
-```
-
-Defaults:
-
-| Setting | Default |
-| --- | --- |
-| Private HTTPS controller | `https://192.168.1.50:8443` |
-| Private worker | `http://127.0.0.1:8000` |
-| Controller configuration | `~/Library/Application Support/NoX Voice/controller.json` |
-| Certificate directory | `~/Library/Application Support/NoX Voice/tls/` |
-| Private voice/persona settings | Alongside the controller configuration |
-
-Use `--port`, `--worker-port` and `--weights-dir` during setup if needed. Ports
-must be different. The bind address must be a specific private IP, not
-`0.0.0.0`. If your network has VLANs, permit the homelab gateway to reach the Mac's
-controller port. The worker port must remain loopback-only.
-
-The setup command prints the gateway bundle directory containing exactly:
+To use another configuration file, pass `--config` **before** the subcommand:
 
 ```text
-gateway/ca.crt
-gateway/client.crt
-gateway/client.key
+nox-voice --config CONFIG_FILE controller
 ```
 
-Copy **only these three files** securely to the homelab. Keep `ca.key`,
-`server.key` and the server certificate on the Mac. Never install this CA into a
-browser or disable certificate verification: the gateway trusts it explicitly,
-and client certificates authorize gateway access to the controller.
+This is syntax notation: replace `CONFIG_FILE` with the chosen path. Setup uses
+that file's parent directory for the new installation's data and certificates.
 
-## 4. Run manually
+## Ports and network address
+
+| Setting           | Default       | Purpose                                  |
+| ----------------- | ------------- | ---------------------------------------- |
+| `port`            | `8443`        | Private HTTPS/mTLS controller API        |
+| `worker_port`     | `8000`        | Authenticated worker on `127.0.0.1` only |
+| `startup_timeout` | `300` seconds | Maximum engine startup wait              |
+
+Use a private IP actually assigned to the Mac and reachable from the Docker host.
+If more than one interface is active, check the address of the intended
+connection. Setup does not assign an IP to an interface. Reserve the address in
+DHCP or otherwise keep it stable.
+
+Both ports must be unused, between 1024 and 65535, and different from each other.
+Setup accepts `--port` and `--worker-port`. After installation, stop the
+controller before editing its JSON configuration and restart afterward.
+
+Changing the controller port also requires updating `NOX_VOICE_CONTROLLER_URL`
+on the Docker host. Changing the IP additionally requires a server certificate
+covering the new address. The worker remains loopback-only in either case.
+
+## Manual operation
+
+Start the controller:
 
 ```sh
 uv run --locked --extra engine nox-voice controller
 ```
 
-The controller starts with the model stopped. Use the webapp's Settings drawer to
-start it. Closing this terminal stops the manual controller and its worker.
+Stop it with **Ctrl+C in that terminal**. The controller terminates its model
+worker on shutdown. The model starts stopped each time; **Settings → Engine**
+controls Start/Stop/Restart while the controller is running.
 
-On startup the engine verifies assets, loads the model, applies quantization,
-loads the codec, warms up and conditions the selected voice. Loading can take a
-while; the webapp continues showing its progress and Stop remains available.
-Startup times out after five minutes by default. Inspect the native installation
-and asset verification if it fails; there is no automatic crash-restart loop.
+Starting the controller does not enable login autostart. Keep the Mac awake for
+remote use. The webapp does not wake the Mac or start a stopped controller.
 
-## 5. Optional startup after login
+## Model assets and precision
 
-Stop the manual controller first, then run:
+`prepare-model` downloads only the official model, codec, tokenizer and voice
+archive. It pins an immutable revision, validates hashes, extracts the 18 known
+voices and writes `manifest.json`. `prepare-model --check` verifies local assets
+offline. The engine verifies the manifest again before loading.
+
+```text
+weights/
+├── model.safetensors
+├── tokenizer-e351c8d8-checkpoint125.safetensors
+├── tokenizer_spm_32k_3.model
+├── voices.tgz
+├── manifest.json
+└── voices_cpu/
+    └── named voice prompt files
+```
+
+Use `--revision` with a full official commit hash for reproducible preparation.
+Use `--weights-dir` on both preparation and setup to select a custom model
+directory. Existing installations store its absolute path as `weights_dir`.
+Stop the engine before replacing assets or changing that path.
+
+PersonaPlex **7B** means approximately seven billion parameters. The selectable
+4/5/6/8-bit settings quantize their weights; they do not change the parameter
+count. Full precision retains the original weight precision. Memory, speed and
+quality should be measured on the target Mac; there is no universal latency
+guarantee. A precision change reloads the model and requires ending the current
+conversation.
+
+## Moving an installation
+
+1. Stop the controller. If autostart was explicitly enabled, disable it first.
+2. Copy or move the installation directory, excluding `.venv/`. Prepared weights
+   can move with it; no repeat download is needed if their manifest verifies.
+3. In the destination, recreate the environment:
+
+   ```sh
+   uv sync --locked --extra engine --python 3.12
+   ```
+
+4. If setup was already completed, update `weights_dir` in `controller.json` to
+   the absolute model directory at its new location. Keep the existing
+   configuration and certificates if the controller IP is unchanged.
+5. Start the controller from the new installation. Re-enable autostart only if
+   that behavior is wanted.
+
+Virtual environments contain installation paths and should be recreated rather
+than copied. A LaunchAgent also records the interpreter and working directory.
+
+## Optional automatic startup
+
+This section is optional. Skip it to keep the Mac controller fully manual.
+
+After stopping any manual controller, explicitly enable startup after login:
 
 ```sh
 uv run --locked --extra engine nox-voice autostart enable
-uv run --locked --extra engine nox-voice autostart status
 ```
 
-This installs a per-user LaunchAgent. It does not install a root daemon and does
-not load the model automatically. The app becomes reachable after you log in and
-while the Mac is awake. To return to manual operation:
+Check or disable that setting:
 
 ```sh
+uv run --locked --extra engine nox-voice autostart status
 uv run --locked --extra engine nox-voice autostart disable
 ```
 
-Keep this repository and its virtual environment at their installed paths while
-autostart is enabled. Disable it before moving or replacing the installation.
-For a separate configuration, place `--config /absolute/path/controller.json`
-**before** the subcommand.
+Enabling installs a per-user LaunchAgent, not a root daemon. It starts the
+controller after login while the Mac is awake; it does not start the model.
+Keep the installation at its recorded path until autostart has been disabled.
 
-## Certificate renewal
+## Certificates and renewal
 
-Client and server certificates expire after one year; the private CA lasts ten
-years. Before expiry, stop the old controller, create a setup with a **new parent
-directory**, replace the gateway's client bundle, update the controller's config
-path and restart both components. Never copy the CA key to the homelab. To revoke
-a lost client bundle immediately, replace the CA and both certificates this way.
+The gateway bundle contains only `ca.crt`, `client.crt` and `client.key`. Keep
+`ca.key` and `server.key` on the Mac. The browser does not use this private CA;
+the gateway trusts it directly and presents its client certificate.
 
-Existing certificate directories are never overwritten automatically.
+Client and server certificates expire after one year; the CA lasts ten years.
+Before expiry, stop the controller and prepare a replacement installation with
+a new configuration parent directory. Transfer its new gateway bundle to the
+Docker host, select the replacement configuration, then restart both services.
+Retain the old files privately until the replacement is verified. A lost client
+bundle can be revoked by replacing the CA and certificates through this process.
+
+Setup refuses existing configuration files and nonempty certificate directories.
+Use `setup --help` to inspect its options; do not delete certificates as a remedy
+for image-pull, Google login or webapp Host errors.
