@@ -10,7 +10,9 @@ services:
     tmpfs:
       - /tmp:size=32m,mode=1777
     environment:
-      NOX_VOICE_PUBLIC_URL: ${NOX_VOICE_PUBLIC_URL:-http://localhost:8080}
+      NOX_VOICE_WEB_PORT: ${NOX_VOICE_WEB_PORT:-8080}
+      NOX_VOICE_PUBLIC_URL: ${NOX_VOICE_PUBLIC_URL:-}
+      NOX_VOICE_ALLOWED_ORIGINS: ${NOX_VOICE_ALLOWED_ORIGINS:-}
       NOX_VOICE_OWNER_EMAIL: ${NOX_VOICE_OWNER_EMAIL:?Set the authorized Google account}
       NOX_VOICE_GOOGLE_CLIENT_ID: ${NOX_VOICE_GOOGLE_CLIENT_ID:?Set the Google OAuth client ID}
       NOX_VOICE_GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret

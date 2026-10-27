@@ -191,8 +191,9 @@ Edit `.env` inside your deployment directory on the homelab:
 
 ```env
 NOX_VOICE_IMAGE_TAG=latest
-NOX_VOICE_PUBLIC_URL=http://localhost:8080
 NOX_VOICE_WEB_PORT=8080
+# Optional HTTPS domain; localhost stays available when this is configured.
+NOX_VOICE_PUBLIC_URL=
 NOX_VOICE_OWNER_EMAIL=your-google-email@example.com
 NOX_VOICE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 NOX_VOICE_CONTROLLER_URL=https://192.168.1.50:8443
@@ -207,10 +208,12 @@ No reverse proxy or Cloudflare configuration is needed for localhost. Leave the
 `tunnel` profile disabled. The Compose file publishes the webapp only on the
 Docker host's loopback address, at port 8080.
 
-`NOX_VOICE_PUBLIC_URL` is the URL used by your browser; its name does not require
-public Internet exposure. Keep its hostname and port identical to the URL you
-open and the Google redirect URI. The Mac controller still uses HTTPS and client
-certificates; the localhost HTTP exception applies only to the webapp.
+`NOX_VOICE_WEB_PORT` sets the host port and automatically enables the matching
+localhost URLs. You do not need to repeat the local URL in another variable.
+`NOX_VOICE_PUBLIC_URL` optionally adds your HTTPS domain without removing local
+access. You can use both at the same time; register a Google callback for each
+address you use. The login returns to the address where it started. The Mac
+controller still uses HTTPS and client certificates.
 
 `localhost` means the device running your browser. To test a headless homelab
 from another computer, use SSH forwarding from that computer:

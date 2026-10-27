@@ -58,7 +58,7 @@ def gateway(config):
 @pytest.fixture
 def authenticated(gateway):
     app, client, remote = gateway
-    token = app.state.sessions.create("owner@example.test", "google-subject")
+    token = app.state.sessions.create("owner@example.test", "google-subject", "https://voice.test")
     client.cookies.set(COOKIE, token, domain="voice.test", path="/")
     user = app.state.sessions.get(token)
     headers = {"Origin": "https://voice.test", "X-CSRF-Token": user["csrf"]}

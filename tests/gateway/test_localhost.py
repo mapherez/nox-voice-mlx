@@ -16,7 +16,7 @@ from test_streaming import install_stream
 )
 def test_loopback_http_is_allowed_without_weakening_controller_tls(config, origin):
     local = replace(config, public_url=origin)
-    assert not local.secure_cookies
+    assert origin in local.browser_origins
     with pytest.raises(ValueError):
         replace(local, controller_url="http://127.0.0.1:8443")
 
@@ -102,7 +102,7 @@ def test_local_google_login_cookie_csrf_stream_and_logout(local_gateway, monkeyp
 
 def test_localhost_keeps_origin_and_host_checks(local_gateway):
     app, client, _ = local_gateway
-    token = app.state.sessions.create("owner@example.test", "id")
+    token = app.state.sessions.create("owner@example.test", "id", "http://localhost:8080")
     with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect(
             "ws://localhost:8080/ws",

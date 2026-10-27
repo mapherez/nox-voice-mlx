@@ -6,7 +6,7 @@ The local implementation checks passed with Python 3.12 and Node 24:
 
 | Check | Result |
 | --- | --- |
-| Python suite | 51 tests passed |
+| Python suite | 60 tests passed |
 | Browser audio resampling suite | 4 tests passed, including 24/44.1/48 kHz input and mute |
 | Native MLX smoke test | Small model warmup at full/4/5/6/8-bit precision, cache restore and unsafe pickle rejection passed |
 | Frontend production build | TypeScript and Vite passed |
@@ -15,6 +15,7 @@ The local implementation checks passed with Python 3.12 and Node 24:
 | Lockfiles | Root, gateway and Mac lockfiles verified offline |
 | Real transport integration | PCM roundtrip through gateway, mutual TLS controller and authenticated echo worker passed |
 | Localhost HTTP | Mocked Google login/state cookies, authenticated PCM streaming, CSRF/origin/host rejection and logout passed; controller TLS remains required |
+| Simultaneous local/domain access | One gateway serves both origins; callbacks, secure cookies, CSRF, sessions and PCM streams remain bound to their starting origin, including behind a simulated HTTP proxy |
 | Local Compose configuration | Official Compose CLI validated only `webapp` starts by default, binds `127.0.0.1:8080` and needs no Cloudflare token |
 | Visual review | Compiled frontend reviewed in Chrome at desktop and emulated 375 px iPhone width, including light/dark themes and the Settings drawer |
 

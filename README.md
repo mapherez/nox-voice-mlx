@@ -23,6 +23,12 @@ host. Google login remains required. Cloudflare Tunnel is optional; neither a
 tunnel nor a reverse proxy is needed for localhost. Direct access from another
 LAN device requires browser-trusted HTTPS for microphone access.
 
+Local access stays available when a domain is configured. Set the host port once
+with `NOX_VOICE_WEB_PORT`; optionally set `NOX_VOICE_PUBLIC_URL` to your HTTPS
+domain. Both work simultaneously, with a separate login/session on each origin.
+Register both callback URLs in Google; there is no need to switch `.env` values
+when moving between local access and the domain.
+
 ## Components
 
 | Directory | Responsibility |

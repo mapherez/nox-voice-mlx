@@ -29,6 +29,9 @@ class Sessions:
             database.execute(
                 "CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, email TEXT NOT NULL, subject TEXT NOT NULL, csrf TEXT NOT NULL, expires REAL NOT NULL)"
             )
+            columns = {row[1] for row in database.execute("PRAGMA table_info(sessions)")}
+            if "origin" not in columns:
+                database.execute("ALTER TABLE sessions ADD COLUMN origin TEXT NOT NULL DEFAULT ''")
 
     @contextmanager
     def connection(self):
@@ -40,23 +43,24 @@ class Sessions:
         finally:
             database.close()
 
-    def create(self, email: str, subject: str) -> str:
+    def create(self, email: str, subject: str, origin: str) -> str:
         token = secrets.token_urlsafe(48)
         with self.connection() as database:
             database.execute("DELETE FROM sessions WHERE expires <= ?", (time.time(),))
             database.execute(
-                "INSERT INTO sessions VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO sessions (token, email, subject, csrf, expires, origin) VALUES (?, ?, ?, ?, ?, ?)",
                 (
                     token_digest(token),
                     email,
                     subject,
                     secrets.token_urlsafe(32),
                     time.time() + SESSION_SECONDS,
+                    origin,
                 ),
             )
         return token
 
-    def get(self, token: str | None) -> dict | None:
+    def get(self, token: str | None, origin: str | None = None) -> dict | None:
         if not token or len(token) > 128:
             return None
         with self.connection() as database:
@@ -64,7 +68,9 @@ class Sessions:
                 "SELECT * FROM sessions WHERE token = ? AND expires > ?",
                 (token_digest(token), time.time()),
             ).fetchone()
-        return dict(value) if value else None
+        if value and (origin is None or value["origin"] == origin):
+            return dict(value)
+        return None
 
     def delete(self, token: str | None) -> None:
         if token:

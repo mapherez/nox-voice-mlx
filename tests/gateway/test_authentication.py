@@ -4,8 +4,17 @@ from dataclasses import replace
 
 import httpx2 as httpx
 import pytest
+from fastapi.responses import RedirectResponse
 from nox_voice_gateway.sessions import COOKIE
 from starlette.websockets import WebSocketDisconnect
+
+
+def begin_google_login(app, client, monkeypatch):
+    async def authorize(request, redirect_uri):
+        return RedirectResponse("https://accounts.google.com/test-login")
+
+    monkeypatch.setattr(app.state.oauth.google, "authorize_redirect", authorize)
+    assert client.get("/auth/google/start", follow_redirects=False).status_code == 307
 
 
 def test_apis_require_a_session(gateway):
@@ -81,6 +90,7 @@ def test_google_identity_must_be_verified_and_allowed(
         return {"userinfo": {"email": email, "email_verified": verified, "sub": subject}}
 
     monkeypatch.setattr(app.state.oauth.google, "authorize_access_token", identity)
+    begin_google_login(app, client, monkeypatch)
     response = client.get("/auth/google/callback", follow_redirects=False)
     assert response.headers["location"] == "/?login=denied"
     assert COOKIE not in response.cookies
@@ -95,6 +105,7 @@ def test_successful_google_login_sets_secure_opaque_cookie(gateway, monkeypatch)
         }
 
     monkeypatch.setattr(app.state.oauth.google, "authorize_access_token", identity)
+    begin_google_login(app, client, monkeypatch)
     response = client.get("/auth/google/callback", follow_redirects=False)
     cookie = response.headers["set-cookie"]
     assert "HttpOnly" in cookie and "Secure" in cookie and "SameSite=lax" in cookie
@@ -117,6 +128,8 @@ def test_google_network_failure_does_not_expose_details(gateway, monkeypatch, ro
     async def unavailable(*args, **kwargs):
         raise httpx.ConnectError("Sensitive upstream diagnostics")
 
+    if route == "callback":
+        begin_google_login(app, client, monkeypatch)
     monkeypatch.setattr(app.state.oauth.google, method, unavailable)
     response = client.get(f"/auth/google/{route}", follow_redirects=False)
     assert response.status_code == 303

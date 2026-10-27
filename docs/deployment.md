@@ -29,8 +29,9 @@ rename `.env.example` to `.env`, and fill in:
 
 ```env
 NOX_VOICE_IMAGE_TAG=latest
-NOX_VOICE_PUBLIC_URL=http://localhost:8080
 NOX_VOICE_WEB_PORT=8080
+# Optional domain, usable alongside localhost; leave empty for local-only use.
+NOX_VOICE_PUBLIC_URL=
 NOX_VOICE_OWNER_EMAIL=you@example.com
 NOX_VOICE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 NOX_VOICE_CONTROLLER_URL=https://192.168.1.50:8443
@@ -41,6 +42,14 @@ only for exact `localhost`, `127.0.0.1` or `::1` hosts; all other webapp hostnam
 require HTTPS. The controller URL always requires HTTPS and must use the IP
 covered by the server certificate. A plain HTTP LAN IP does not provide browser
 microphone access.
+
+Localhost access is always enabled at `NOX_VOICE_WEB_PORT`. An optional
+`NOX_VOICE_PUBLIC_URL=https://voice.example.com` adds that domain alongside it.
+For another trusted HTTPS LAN hostname, add its origin to
+`NOX_VOICE_ALLOWED_ORIGINS` (comma-separated). Register a Google redirect URI for
+every address used, including the local port. Do not switch configuration when
+moving between addresses: each login returns to its starting origin, and cookies,
+CSRF checks and streaming sessions are bound to that origin.
 
 Create `secrets/` alongside Compose and populate:
 
@@ -95,9 +104,9 @@ docker compose up -d
 
 Open **http://localhost:8080** on the Docker host and sign in with Google. The
 published port binds only to `127.0.0.1`. No Cloudflare token is needed and its
-profile is not started. For a different host port, change both
-`NOX_VOICE_WEB_PORT` and the port in `NOX_VOICE_PUBLIC_URL`, then register the
-matching Google redirect URI.
+profile is not started. For a different local port, change only
+`NOX_VOICE_WEB_PORT`, then register the matching local Google redirect URI.
+The public domain, if configured, stays unchanged.
 
 If your browser runs on a different computer, `localhost` refers to that computer,
 not the homelab. For a local test through SSH, run on the browser's computer:
@@ -107,8 +116,8 @@ ssh -N -L 8080:127.0.0.1:8080 YOUR_USER@YOUR_HOMELAB_HOST
 ```
 
 Then open the same localhost URL. For direct LAN access on a MacBook/iPhone,
-configure a browser-trusted HTTPS hostname on a LAN reverse proxy and set
-`NOX_VOICE_PUBLIC_URL` to that origin. A public tunnel is not required for LAN
+configure a browser-trusted HTTPS hostname on a LAN reverse proxy and add
+its origin to `NOX_VOICE_ALLOWED_ORIGINS`. A public tunnel is not required for LAN
 HTTPS. Google login still requires an Internet connection to Google.
 
 ## Optional external access: Cloudflare Tunnel
@@ -117,7 +126,8 @@ When enabling external access, use the supplied connector in the same Docker net
 connector-to-webapp hop does not travel unencrypted across the LAN.
 
 1. Set `NOX_VOICE_PUBLIC_URL=https://voice.example.com` in `.env` and register
-   that hostname's `/auth/google/callback` URI with Google.
+   that hostname's `/auth/google/callback` URI with Google. Localhost remains
+   available, so keep the local callback registered as well.
 2. Create a named tunnel in Cloudflare and put its token in the secret file.
 3. Configure its public hostname `voice.example.com` to service
    **`http://webapp:8080`**.

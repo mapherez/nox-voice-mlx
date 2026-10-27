@@ -4,7 +4,6 @@ import asyncio
 import hmac
 import os
 from contextlib import asynccontextmanager, suppress
-from urllib.parse import urlsplit
 
 import anyio
 import httpx2 as httpx
@@ -13,16 +12,56 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from websockets.exceptions import ConnectionClosed, InvalidHandshake
 
-from .config import Config
+from .config import Config, normalize_origin
 from .sessions import SESSION_SECONDS, Sessions, cookie_name
 from .transport import Controller, ControllerUnavailable
 
 
 class BodyTooLarge(Exception):
     pass
+
+
+class BrowserBoundary:
+    """Choose a configured browser origin from Host, without trusting forwarded headers."""
+
+    def __init__(self, app, config: Config):
+        self.app, self.config = app, config
+        self.session_apps = {
+            secure: SessionMiddleware(
+                app,
+                secret_key=config.session_secret,
+                session_cookie="__Host-nox_voice_oauth" if secure else "nox_voice_local_oauth",
+                max_age=600,
+                same_site="lax",
+                https_only=secure,
+            )
+            for secure in (False, True)
+        }
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] not in {"http", "websocket"}:
+            return await self.app(scope, receive, send)
+        request = Request(scope) if scope["type"] == "http" else WebSocket(scope, receive, send)
+        host = request.headers.get("host", "")
+        origin = self.config.origin_for_host(host)
+        if origin is None and scope["type"] == "http" and scope["path"] == "/health":
+            try:
+                # Container health probes use the internal loopback port, not the host port.
+                candidate = normalize_origin("http://" + host)
+                if candidate.startswith("http://"):
+                    origin = candidate
+            except ValueError:
+                pass
+        if origin is None:
+            if scope["type"] == "websocket":
+                return await send({"type": "websocket.close", "code": 1008})
+            return await JSONResponse({"error": "Invalid host header."}, status_code=400)(
+                scope, receive, send
+            )
+        scope.setdefault("state", {})["browser_origin"] = origin
+        await self.session_apps[origin.startswith("https://")](scope, receive, send)
 
 
 class BodyLimit:
@@ -58,10 +97,12 @@ class Security:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         request = Request(scope)
+        origin = request.state.browser_origin
+        secure = origin.startswith("https://")
 
         async def secure_send(message):
             if message["type"] == "http.response.start":
-                websocket_origin = self.config.public_url.replace("https://", "wss://", 1).replace(
+                websocket_origin = origin.replace("https://", "wss://", 1).replace(
                     "http://", "ws://", 1
                 )
                 headers = {
@@ -72,7 +113,7 @@ class Security:
                     "permissions-policy": "microphone=(self), camera=(), geolocation=()",
                     "content-security-policy": f"default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' {websocket_origin}; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
                 }
-                if self.config.secure_cookies:
+                if secure:
                     headers["strict-transport-security"] = "max-age=31536000"
                 message["headers"] = [
                     (key, value)
@@ -85,7 +126,7 @@ class Security:
             await send(message)
 
         if request.url.path.startswith("/api/") or request.url.path == "/auth/logout":
-            user = self.sessions.get(request.cookies.get(cookie_name(self.config.secure_cookies)))
+            user = self.sessions.get(request.cookies.get(cookie_name(secure)), origin)
             if not user:
                 return await JSONResponse({"error": "Sign in to continue."}, status_code=401)(
                     scope, receive, secure_send
@@ -93,9 +134,7 @@ class Security:
             request.state.user = user
             if request.method not in {"GET", "HEAD", "OPTIONS"}:
                 csrf = request.headers.get("x-csrf-token", "")
-                if request.headers.get(
-                    "origin"
-                ) != self.config.public_url or not hmac.compare_digest(
+                if request.headers.get("origin") != origin or not hmac.compare_digest(
                     csrf.encode(), user["csrf"].encode()
                 ):
                     return await JSONResponse(
@@ -106,7 +145,6 @@ class Security:
 
 def create_app(config: Config | None = None, controller: Controller | None = None) -> FastAPI:
     config = config or Config.from_env()
-    session_cookie = cookie_name(config.secure_cookies)
     sessions = Sessions(config.data_dir)
     remote = controller or Controller(config)
     connections: dict[str, set[WebSocket]] = {}
@@ -140,20 +178,7 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
 
     app.add_middleware(Security, config=config, sessions=sessions)
     app.add_middleware(BodyLimit)
-    app.add_middleware(
-        SessionMiddleware,
-        secret_key=config.session_secret,
-        session_cookie="__Host-nox_voice_oauth"
-        if config.secure_cookies
-        else "nox_voice_local_oauth",
-        max_age=600,
-        same_site="lax",
-        https_only=config.secure_cookies,
-    )
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=[urlsplit(config.public_url).hostname, "127.0.0.1", "localhost"],
-    )
+    app.add_middleware(BrowserBoundary, config=config)
 
     @app.get("/health")
     async def health():
@@ -164,17 +189,21 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
         if not config.google_client_id or not config.google_client_secret:
             return JSONResponse({"error": "Google login is not configured."}, status_code=503)
         request.session.clear()
+        origin = request.state.browser_origin
+        request.session["browser_origin"] = origin
         try:
-            return await oauth.google.authorize_redirect(
-                request, config.public_url + "/auth/google/callback"
-            )
+            return await oauth.google.authorize_redirect(request, origin + "/auth/google/callback")
         except httpx.HTTPError:
             request.session.clear()
             return RedirectResponse("/?login=failed", status_code=303)
 
     @app.get("/auth/google/callback")
     async def callback(request: Request):
+        origin = request.state.browser_origin
+        secure = origin.startswith("https://")
         try:
+            if request.session.get("browser_origin") != origin:
+                raise ValueError("Login origin mismatch.")
             token = await oauth.google.authorize_access_token(request)
             identity = token.get("userinfo", {})
             email = str(identity.get("email", "")).casefold()
@@ -185,14 +214,14 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
             ):
                 request.session.clear()
                 return RedirectResponse("/?login=denied", status_code=303)
-            session_token = sessions.create(email, str(identity["sub"]))
+            session_token = sessions.create(email, str(identity["sub"]), origin)
             request.session.clear()
             response = RedirectResponse("/", status_code=303)
             response.set_cookie(
-                session_cookie,
+                cookie_name(secure),
                 session_token,
                 max_age=SESSION_SECONDS,
-                secure=config.secure_cookies,
+                secure=secure,
                 httponly=True,
                 samesite="lax",
                 path="/",
@@ -214,16 +243,15 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
 
     @app.post("/auth/logout")
     async def logout(request: Request):
-        token = request.cookies.get(session_cookie)
+        secure = request.state.browser_origin.startswith("https://")
+        token = request.cookies.get(cookie_name(secure))
         sessions.delete(token)
         for socket in list(connections.get(token, set())):
             with suppress(RuntimeError):
                 await socket.close(1008, "Signed out.")
         request.session.clear()
         response = JSONResponse({"ok": True})
-        response.delete_cookie(
-            session_cookie, secure=config.secure_cookies, httponly=True, samesite="lax"
-        )
+        response.delete_cookie(cookie_name(secure), secure=secure, httponly=True, samesite="lax")
         return response
 
     async def forward(method, path, payload=None, timeout=8):
@@ -301,8 +329,9 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
 
     @app.websocket("/ws")
     async def conversation(socket: WebSocket):
-        token = socket.cookies.get(session_cookie)
-        if socket.headers.get("origin") != config.public_url or not sessions.get(token):
+        origin = socket.state.browser_origin
+        token = socket.cookies.get(cookie_name(origin.startswith("https://")))
+        if socket.headers.get("origin") != origin or not sessions.get(token, origin):
             await socket.close(1008)
             return
         tasks = []
@@ -332,7 +361,7 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
                 async def session_expiry():
                     while True:
                         await asyncio.sleep(5)
-                        if not sessions.get(token):
+                        if not sessions.get(token, origin):
                             await socket.close(1008, "Session expired. Sign in again.")
                             return
 

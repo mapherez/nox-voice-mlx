@@ -80,7 +80,9 @@ def test_browser_gateway_mtls_controller_and_private_worker(config, tmp_path):
             )
             app = gateway_app(web_config)
             with TestClient(app, base_url=config.public_url) as client:
-                token = app.state.sessions.create(config.owner_email, "test-subject")
+                token = app.state.sessions.create(
+                    config.owner_email, "test-subject", config.public_url
+                )
                 client.cookies.set(COOKIE, token, domain="voice.test", path="/")
                 with client.websocket_connect(
                     "wss://voice.test/ws",

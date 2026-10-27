@@ -20,11 +20,23 @@ The controller URL always requires HTTPS and mutual TLS.
 CSRF tokens remain in page memory, never URLs or localStorage. The only
 localStorage value is the light/dark/system theme preference.
 
-Unsafe API methods require the configured Origin and session's CSRF token.
-WebSockets require a valid session and exact Origin. Sessions are checked during
+Local origins are generated from `NOX_VOICE_WEB_PORT` and remain enabled when
+`NOX_VOICE_PUBLIC_URL` adds an HTTPS domain. Optional additional HTTPS LAN origins
+are listed in `NOX_VOICE_ALLOWED_ORIGINS`. The request Host must match an explicit
+configured authority, including its port. Forwarded headers do not select an
+origin or redirect destination; a configured HTTPS authority remains HTTPS even
+when a reverse proxy connects to the gateway over HTTP.
+
+OAuth state, callbacks, cookie security and CSP follow the selected origin.
+Unsafe API methods require that same Origin and the session's CSRF token.
+WebSockets require a valid session bound to that exact origin. Sessions are checked during
 streams and revoked on logout. Requests and audio frames are bounded. All static
 scripts, styles and fonts are self-hosted; CSP blocks third-party script/API
 connections. Access logging is disabled and application telemetry is disabled.
+
+Session storage automatically gains an origin column when upgraded. Earlier
+sessions without an origin must sign in again; each origin then has its own
+session. Signing out locally does not sign out the HTTPS domain.
 
 The audio worklet resamples microphone PCM continuously to 24 kHz mono, with
 1920-sample float32 frames. Audio playback alone connects to the sphere's analyser;
@@ -88,8 +100,8 @@ uses Google login even when the request originates inside the home network.
 
 Cloudflare is optional. Localhost runs without a reverse proxy or tunnel. A
 trusted HTTPS hostname can also resolve directly to a LAN reverse proxy without
-any public route. The configured `NOX_VOICE_PUBLIC_URL` is the browser origin,
-not a requirement to publish the service. Only enabling the optional tunnel
+any public route. The configured `NOX_VOICE_PUBLIC_URL` adds an optional browser
+origin and does not replace localhost or require public exposure. Only enabling the optional tunnel
 profile starts its connector. Google authentication still requires Internet
 access to Google; inference and local audio transport do not use Cloudflare in
 a localhost or LAN-only deployment.
