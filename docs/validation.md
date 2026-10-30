@@ -91,6 +91,11 @@ on October 30, 2026 observed:
 - Both `linux/arm64` and `linux/amd64` images built and served the React shell,
   JavaScript and CSS through the actual gateway. Private fixture secret mounts
   and the unprivileged runtime checks passed. No model was loaded by these tests.
+- A combined amd64/arm64 build with the frontend cache disabled also passed
+  after pinning the frontend stage to `BUILDPLATFORM`. Checks and bundling ran
+  once on the native builder, while both runtime architectures retained their
+  startup/security checks and identical frontend asset hashes. Publication in
+  GitHub Actions still requires a successful CI run with this Dockerfile change.
 - Chrome regression QA passed for the compiled frontend and the Vite+
   development server. Representative Settings/Downloads light-theme screenshots
   matched the recorded baseline pixel for pixel in the compared captures.

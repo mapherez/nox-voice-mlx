@@ -217,7 +217,9 @@ anything automatically.
 
 The frontend build uses the pinned Node version in `frontend/.node-version`
 and the npm lockfile, with project-local Vite+ checks/tests/build. The Docker
-builder uses glibc for the supported amd64/arm64 toolchain binaries. The final
+builder uses glibc and the builder's native platform (`BUILDPLATFORM`), so
+frontend compilation and type checks run without target-platform emulation.
+The resulting static assets are shared by the amd64/arm64 images. The final
 image serves the compiled React assets through the existing Python gateway;
 Node and Vite+ are build tools. The React migration changes the frontend build
 and CI, while Compose keeps the existing services, ports, secrets and volumes.
