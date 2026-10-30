@@ -75,6 +75,7 @@ native ARM64 Python 3.12. Normal Docker deployment does not require Node or npm.
 | [Deployment reference](docs/deployment.md) | Environment variables, secrets, LAN/external access, updates and troubleshooting  |
 | [Architecture](docs/architecture.md)       | Authentication, transport, model loading and privacy boundaries                   |
 | [Multi-model engine contract](docs/voice-engine-contract.md) | Agreed target and implementation progress for PersonaPlex/LFM3, settings, interruption, tasks and NoX Suite integration |
+| [Stage 2.2 implementation plan](docs/implementation-stage-2.2.md) | React, TypeScript and Vite+ migration, structure and acceptance status |
 | [Validation](docs/validation.md)           | Development checks and deployment acceptance                                      |
 | [Third-party notices](docs/notices.md)     | Licenses and upstream components                                                  |
 
@@ -82,7 +83,7 @@ native ARM64 Python 3.12. Normal Docker deployment does not require Node or npm.
 
 | Directory             | Contents                                                       |
 | --------------------- | -------------------------------------------------------------- |
-| `frontend/`           | TypeScript interface, sphere and browser audio                 |
+| `frontend/`           | React/TypeScript components, Vite+ tooling, sphere and browser audio |
 | `gateway/`            | Authentication, sessions and audio proxy                       |
 | `mac/controller/`     | Native controller, certificates and process lifecycle          |
 | `mac/engine/`         | PersonaPlex MLX inference worker                               |

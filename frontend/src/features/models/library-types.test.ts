@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { bytes, downloadIndicator, type DownloadJob } from "./model-manager";
+import { describe, expect, it } from "vite-plus/test";
+import { bytes, downloadIndicator, type DownloadJob } from "./library-types";
 
 const job = (state: string, provider = "lfm3-audio"): DownloadJob => ({
   id: state,

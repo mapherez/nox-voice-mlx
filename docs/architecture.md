@@ -14,6 +14,34 @@ Mac controller → authenticated loopback worker. Google OAuth and Hugging Face
 downloads are separate from inference. The original NVIDIA reference server and
 React client are not installed, served or included in the webapp container.
 
+## Frontend composition
+
+The main webapp uses React and TypeScript, built with the project-local Vite+
+toolchain. `frontend/index.html` is the document shell; `src/main.tsx` mounts
+one React root. `src/app/App.tsx` composes Conversation, Settings and Downloads.
+Feature directories own their components and state/services; `components/ui`
+contains the shared icon, dialog and media-query primitives.
+
+`AppRuntime` owns the authenticated page lifetime and coordinates the feature
+controllers. Typed observable snapshots connect these controllers to React
+through `useSyncExternalStore`. Server snapshots, unsaved settings drafts and
+pending operation state have separate ownership. UI IDs support accessibility
+and regression tests; services do not search or rewrite the rendered DOM.
+
+The PersonaPlex/LFM3 engines, audio worklets and PCM utilities retain their
+protocols and implementations. Native microphone/audio resources start from a
+user gesture. Component renders and Settings changes do not restart them.
+Page teardown releases requests, subscriptions, keyboard handlers, audio and
+timers; the orb component also disposes its renderer, geometry, observers and
+listeners. Development checks exercise React StrictMode setup/cleanup.
+
+Vite+ provides development, formatting/lint/type checks, tests and production
+bundling. The container builds static assets with Node on a glibc builder, then
+copies only `dist` into the Python gateway runtime. The runtime deployment has
+the same services, API paths, ports and secret boundaries. See the
+[stage 2.2 plan and acceptance](implementation-stage-2.2.md) and
+[development checks](validation.md).
+
 ## Browser boundary
 
 The gateway validates Google OpenID Connect through Authlib (state, nonce,

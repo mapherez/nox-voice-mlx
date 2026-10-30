@@ -1,5 +1,6 @@
 """CI checks the actual Linux image with private, differently owned secret mounts."""
 
+import json
 import os
 import shutil
 import stat
@@ -97,6 +98,25 @@ def test_private_host_secrets_work_without_chown_or_chmod(tmp_path):
         assert not fields["Groups"].strip()
         assert int(fields["CapEff"].strip(), 16) == 0
         assert fields["NoNewPrivs"].strip() == "1"
+
+        # Check the actual gateway-served React shell and its production assets.
+        assets = json.loads(docker("exec", container, "python", "-c", """
+import json, re, urllib.request
+origin = 'http://127.0.0.1:8080'
+page = urllib.request.urlopen(origin + '/').read().decode()
+assert 'id="root"' in page
+paths = re.findall(r'(?:src|href)="(/assets/[^\"]+)"', page)
+assert paths
+results = []
+for path in paths:
+    response = urllib.request.urlopen(origin + path)
+    assert response.status == 200 and response.read()
+    results.append([path, response.headers.get_content_type()])
+print(json.dumps(results))
+"""))
+        assert any(path.endswith(".js") and kind in {"text/javascript", "application/javascript"}
+            for path, kind in assets)
+        assert any(path.endswith(".css") and kind == "text/css" for path, kind in assets)
 
         for path, (before, contents) in snapshots.items():
             after = path.stat()

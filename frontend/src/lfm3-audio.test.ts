@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 import { LFM3Audio } from "./lfm3-audio";
 import { pcmToBase64 } from "./pcm16";
 
@@ -54,7 +61,8 @@ class Worklet {
     postMessage: vi.fn(),
     close: vi.fn(),
     onmessage: null as
-      ((event: { data: Record<string, unknown> }) => void) | null,
+      | ((event: { data: Record<string, unknown> }) => void)
+      | null,
   };
   connect = vi.fn((destination: unknown) => destination);
   disconnect = vi.fn();

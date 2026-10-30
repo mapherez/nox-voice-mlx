@@ -111,3 +111,10 @@ export function legacyProvider(): ProviderDescription {
       "The official conversational model supports English. Other languages are experimental.",
   };
 }
+
+/** Only scalar settings are valid input values; never stringify an object. */
+export function profileText(value: unknown): string {
+  return typeof value === "string" || typeof value === "number"
+    ? String(value)
+    : "";
+}

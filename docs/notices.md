@@ -7,6 +7,11 @@
   production webapp image. Model weights are separately subject to the NVIDIA
   model access terms/license on Hugging Face.
 - Three.js is distributed under its MIT license through the frontend dependency.
+- React, React DOM and Scheduler are distributed under their MIT licenses in
+  the compiled frontend. Their notices, together with Three.js and Inter, are
+  emitted as `assets/third-party-licenses.txt` in the frontend build.
+- Vite+ and the React build/test tools are development dependencies. Their
+  executables and Node.js are not included in the deployed Python runtime.
 - Inter Variable is distributed by `@fontsource-variable/inter` under SIL OFL
   1.1; the font and license are included with that dependency. Fonts are served
   locally, not requested from a font CDN at runtime.

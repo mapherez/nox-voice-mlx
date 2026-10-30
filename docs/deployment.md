@@ -215,6 +215,13 @@ to `main` publish `latest` and a commit tag; `vX.Y.Z` tags publish a version tag
 Pull requests check and build without publishing. Publication does not deploy
 anything automatically.
 
+The frontend build uses the pinned Node version in `frontend/.node-version`
+and the npm lockfile, with project-local Vite+ checks/tests/build. The Docker
+builder uses glibc for the supported amd64/arm64 toolchain binaries. The final
+image serves the compiled React assets through the existing Python gateway;
+Node and Vite+ are build tools. The React migration changes the frontend build
+and CI, while Compose keeps the existing services, ports, secrets and volumes.
+
 The image path has this form:
 
 ```text

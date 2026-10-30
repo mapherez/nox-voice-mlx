@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 
 const { chromium } = await import(pathToFileURL(resolve(process.argv[2])).href);
 const url = process.argv[3];
+const frontendUrl = process.argv[4] || url;
 const temporary = resolve(".tmp");
 await mkdir(temporary, { recursive: true });
 const profile = await mkdtemp(join(temporary, "provider-browser-"));
@@ -28,6 +29,14 @@ const browser = await chromium.launchPersistentContext(profile, {
 const errors = [];
 try {
   const page = await browser.newPage();
+  if (frontendUrl !== url) {
+    // Keep the dev server's real TSX/HMR/StrictMode path, using only fixture APIs.
+    await page.route("**/api/**", async route => {
+      const request = new URL(route.request().url());
+      const response = await route.fetch({ url: url + request.pathname + request.search });
+      await route.fulfill({ response });
+    });
+  }
   const audioMessages = [];
   let sequence = 0;
   await page.routeWebSocket("**/voice/v1/ws", (wire) => {
@@ -49,7 +58,7 @@ try {
     });
   });
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(url);
+  await page.goto(frontendUrl);
   await page.locator("#open-settings").click();
   await page.waitForFunction(() => !document.getElementById("save-settings").disabled);
   assert.equal(await page.locator('[role="tab"]').count(), 4);
@@ -73,6 +82,12 @@ try {
   assert.equal(await page.locator("#voice option").count(), 18);
   assert.equal(await page.locator("#quantization option").count(), 5);
   await page.locator("#persona").fill("A concise persona entered through the main webapp.");
+  // Controller polling cannot replace a focused draft or move its caret.
+  const caret = await page.locator("#persona").evaluate((input) => input.selectionStart);
+  await page.waitForResponse(response => response.url().endsWith("/api/voice/v1/models") && response.request().method() === "GET");
+  assert.equal(await page.locator("#persona").inputValue(), "A concise persona entered through the main webapp.");
+  assert.equal(await page.locator("#persona").evaluate((input) => input.selectionStart), caret);
+  assert.equal(await page.evaluate(() => document.activeElement.id), "persona");
   await page.locator("#save-settings").click();
   await page.waitForFunction(() => document.getElementById("settings-feedback").textContent.includes("saved"));
   const value = await (await page.request.get(`${url}/api/voice/v1/settings`)).json();
@@ -114,7 +129,7 @@ try {
   const htmlFailure = async (route) => {
     if (route.request().method() === "DELETE")
       await route.fulfill({ status: 405, contentType: "text/html", body: "<!DOCTYPE html><h1>Method not allowed</h1>" });
-    else await route.continue();
+    else await route.fallback();
   };
   await page.route(clearPath, htmlFailure);
   await page.locator("#clear-downloads").click();
@@ -220,6 +235,7 @@ try {
   await page.waitForFunction(() => matchMedia("(pointer: coarse)").matches);
   assert.equal(await page.locator("#hold-to-talk").textContent(), "Press here to speak");
   assert.doesNotMatch(await page.locator("#conversation-subtitle").innerText(), /Space/);
+  assert.equal(audioMessages.filter(message => message.type === "session.start").length, 1);
   await page.locator("#end-conversation").click();
   await page.locator("#open-settings").click();
   await page.locator("#tab-models").click();
@@ -228,6 +244,33 @@ try {
   await page.locator("#tab-voice").click();
   await page.locator("#save-settings").click();
   await page.waitForFunction(() => document.getElementById("settings-feedback").textContent.includes("saved"));
+
+  // Roving tab focus and native dialog dismissal remain keyboard accessible.
+  await page.locator("#tab-voice").focus();
+  await page.keyboard.press("ArrowRight");
+  assert.equal(await page.locator("#tab-credentials").getAttribute("aria-selected"), "true");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "tab-credentials");
+  await page.keyboard.press("End");
+  assert.equal(await page.locator("#tab-general").getAttribute("aria-selected"), "true");
+  await page.keyboard.press("Escape");
+  await page.locator("#settings").waitFor({ state: "hidden" });
+  assert.equal(await page.evaluate(() => document.activeElement.id), "open-settings");
+  await page.locator("#open-settings").click();
+  await page.locator("#tab-general").click();
+  await page.locator("#theme").selectOption("dark");
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+  await page.screenshot({ path: join(temporary, "settings-general-dark-tablet.png"), fullPage: true });
+  assert.equal(await page.evaluate(() => localStorage.getItem("nox-voice-theme")), "dark");
+  assert.equal(await page.evaluate(() => Object.values(localStorage).some(value => value.includes("disposableBrowserFixture"))), false);
+  await page.reload();
+  await page.locator("#open-settings").click();
+  await page.locator("#tab-general").click();
+  assert.equal(await page.locator("#theme").inputValue(), "dark");
+  await page.locator("#theme").selectOption("system");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.waitForFunction(() => !document.documentElement.dataset.theme && getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() === "#0b1018" && document.querySelector('meta[name="theme-color"]').content === "#0b1018");
+  assert.equal(await page.locator('meta[name="theme-color"]').getAttribute("content"), "#0b1018");
+  await page.locator("#theme").selectOption("light");
 
   assert.deepEqual(errors, []);
   console.log("Settings QA passed: tabs, credentials, Finder action, downloads/cancel/resume, Load/Eject, profile conflict, mobile layout and LFM3 Space/touch interruption.");

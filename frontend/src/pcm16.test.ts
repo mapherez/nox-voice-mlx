@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { base64ToPCM, PCM16Encoder, pcmToBase64 } from "./pcm16";
 
 describe("PCM16 audio transport", () => {

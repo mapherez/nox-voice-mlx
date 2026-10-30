@@ -11,11 +11,30 @@ export class VoiceOrb {
   private readonly reduced = matchMedia("(prefers-reduced-motion: reduce)");
   private readonly mobile = matchMedia("(pointer: coarse)").matches;
   private frame = 0;
+  private geometry: THREE.BufferGeometry | null = null;
+  private observer: ResizeObserver | null = null;
+  private disposed = false;
+  private contextLost = (event: Event) => {
+    event.preventDefault();
+    this.fallback();
+  };
+  private motionChanged = () => {
+    this.lastFrame = 0;
+    this.draw(performance.now());
+  };
+  private visibilityChanged = () => {
+    cancelAnimationFrame(this.frame);
+    if (!document.hidden) {
+      this.lastFrame = 0;
+      this.draw(performance.now());
+    }
+  };
 
   constructor(
     private canvas: HTMLCanvasElement,
     private readAssistant: () => number,
   ) {
+    delete canvas.parentElement!.dataset.fallback;
     try {
       this.renderer = new THREE.WebGLRenderer({
         canvas,
@@ -41,6 +60,7 @@ export class VoiceOrb {
         seeds[i] = ((i * 127.1) % 173) / 173;
       }
       const geometry = new THREE.BufferGeometry();
+      this.geometry = geometry;
       geometry.setAttribute(
         "position",
         new THREE.BufferAttribute(positions, 3),
@@ -87,28 +107,31 @@ export class VoiceOrb {
           }`,
       });
       this.scene.add(new THREE.Points(geometry, this.material));
-      new ResizeObserver(() => this.resize()).observe(canvas.parentElement!);
-      canvas.addEventListener("webglcontextlost", (event) => {
-        event.preventDefault();
-        this.fallback();
-      });
-      this.reduced.addEventListener("change", () => {
-        this.lastFrame = 0;
-        this.draw(performance.now());
-      });
-      document.addEventListener("visibilitychange", () => {
-        cancelAnimationFrame(this.frame);
-        if (!document.hidden) {
-          this.lastFrame = 0;
-          this.draw(performance.now());
-        }
-      });
+      this.observer = new ResizeObserver(() => this.resize());
+      this.observer.observe(canvas.parentElement!);
+      canvas.addEventListener("webglcontextlost", this.contextLost);
+      this.reduced.addEventListener("change", this.motionChanged);
+      document.addEventListener("visibilitychange", this.visibilityChanged);
       this.themeChanged();
       this.resize();
       this.draw(performance.now());
     } catch {
       this.fallback();
     }
+  }
+
+  dispose(): void {
+    this.disposed = true;
+    cancelAnimationFrame(this.frame);
+    this.observer?.disconnect();
+    this.canvas.removeEventListener("webglcontextlost", this.contextLost);
+    this.reduced.removeEventListener("change", this.motionChanged);
+    document.removeEventListener("visibilitychange", this.visibilityChanged);
+    this.geometry?.dispose();
+    this.material?.dispose();
+    this.renderer?.dispose();
+    this.scene.clear();
+    this.renderer = null;
   }
 
   themeChanged(): void {
@@ -140,7 +163,7 @@ export class VoiceOrb {
   }
   private draw = (now: number): void => {
     cancelAnimationFrame(this.frame);
-    if (!this.renderer || document.hidden) return;
+    if (this.disposed || !this.renderer || document.hidden) return;
     if (now - this.lastFrame >= 1000 / (this.mobile ? 30 : 60)) {
       this.energy += (this.readAssistant() - this.energy) * 0.14;
       if (this.material) {

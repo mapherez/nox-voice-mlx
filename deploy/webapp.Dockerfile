@@ -1,7 +1,7 @@
 # The webapp image deliberately never installs or copies the native Mac engine.
-FROM node:24.22.1-alpine AS frontend
+FROM node:24.22.1-bookworm-slim AS frontend
 WORKDIR /build
-COPY frontend/package.json frontend/package-lock.json ./
+COPY frontend/package.json frontend/package-lock.json frontend/.node-version ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build

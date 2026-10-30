@@ -577,6 +577,22 @@ actions. All are relayed through authenticated web gateway and mTLS. Validate
 identities and payloads server-side; jobs and credentials never become arbitrary
 URL fetchers, executables or filesystem browsers.
 
+### Stage 2.2 — React, TypeScript and Vite+
+
+Migrate the main frontend to React components and Vite+, preserving current
+features, appearance, provider behavior, settings and API/audio/security
+boundaries. Organize Conversation, Settings and its tabs, Models, Downloads and
+Credentials by responsibility, with typed services and explicit resource
+lifecycle management. Include development checks, tests, Docker build, CI and
+documentation in the migration.
+
+The [stage 2.2 implementation plan](implementation-stage-2.2.md) is approved and
+the migration is implemented. Automated component, lifecycle, browser and
+container checks pass; real deployment acceptance remains pending. This stage
+follows 2.1 and precedes stage 3. Stages 3–6 retain their scope and order.
+Completion requires functional and visual parity acceptance, with real
+deployment findings reported separately in [validation](validation.md).
+
 Current implementation status:
 
 | Stage | Repository status |
@@ -584,6 +600,7 @@ Current implementation status:
 | 1. Provider boundary and versioned settings | Implemented: provider-defined worker module/bootstrap/metadata, independent typed profiles, revision conflicts, authenticated API relay and catalogue-aware controls; existing PersonaPlex audio path retained |
 | 2. LFM3 audio in the main webapp | Implemented: explicit pinned preparation/import, private owned runtime, complete-turn ASR, audio-only TTS, Space/touch interruption and independent audio-check sessions in the existing frontend |
 | 2.1. Model management and Settings | Implemented: both-provider downloads, bounded Download Manager, explicit Load/Eject, private service credentials, native Finder action and responsive Settings tabs; see validation for test coverage |
+| 2.2. React, TypeScript and Vite+ | Implemented: modular React UI, typed feature state/services, Vite+ checks/tests/build, CI and amd64/arm64 container validation; real deployment parity acceptance pending before stage 3 |
 | 3. Generic executor and task store | Pending; the isolated demo's MCP/LLM paths remain independent |
 | 4. Background tasks and presentation | Pending |
 | 5. Full customization and compatibility | Pending beyond PersonaPlex controls, LFM3 input/output language, vocabulary and voice controls, and profile/API compatibility delivered in stages 1–2 |
@@ -612,6 +629,8 @@ or per-product pilots. Keep the working PersonaPlex path throughout.
    transcription, TTS, Space/touch interruption and independent audio sessions.
    **Stage 2.1 — Model management and Settings:** complete the approved work
    package above before proceeding to stage 3.
+   **Stage 2.2 — React, TypeScript and Vite+:** complete the frontend migration
+   and parity acceptance in the linked implementation plan before stage 3.
 3. **Generic executor and task store:** connect the existing LLM service, discover
    MCP schemas, validate calls, bind results and execute dependent/conditional work.
 4. **Background tasks and presentation:** accept new turns during pending work,

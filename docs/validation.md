@@ -19,19 +19,26 @@ This environment installs the lightweight controller/gateway and test tools. It
 does not install the full inference stack or download the model. Some integration
 tests open temporary loopback listeners and use synthetic audio/certificates.
 
-**Where:** `frontend/`, with Node 24 and npm installed.
+**Where:** `frontend/`, with the Node version from `.node-version` and the npm
+version declared in `package.json`.
 
 ```sh
 npm ci
-npm run format:check
+npm run check
 npm test
 npm run build
 npm audit --audit-level=high
 ```
 
-The build validates the complete `index.html` before compiling TypeScript and
-bundling the frontend. Run `npm run lint:html` for HTML validation alone;
-`format:check` checks formatting separately.
+The project-local Vite+ toolchain runs formatting, lint, React/hooks/accessibility
+rules and full TypeScript checks through `npm run check`, followed by HTML
+validation of the document shell. The build includes these checks before
+bundling. React's TSX is checked by the compiler/linter and rendered-browser
+tests; validating the small `index.html` alone does not validate the interface.
+Use `npm run format` to apply formatting or `npm run format:check` to check it
+alone. A global Vite+ installation is optional. `npm run dev` starts Vite+;
+authenticated API traffic is still owned by the gateway, not a standalone static
+dev server.
 
 The suites cover authentication policy, session expiry/revocation, CSRF, Host and
 Origin validation, concurrent local/domain access, callback origin binding,
@@ -63,6 +70,42 @@ Download Manager activity/cancel/resume, native-folder API feedback, explicit
 Load/Eject, mobile layout and LFM3 keyboard/touch capture/interruption with a
 fake microphone. Screenshots cover desktop and mobile. It does not establish
 Safari or physical mobile-device compatibility.
+
+Add `--dev` to the same harness command to exercise the real Vite+ development
+server, TSX transformation, React Fast Refresh setup and StrictMode lifecycle.
+The harness owns that temporary server and forwards only its browser API
+requests to the synthetic fixture. Production mode serves the compiled assets.
+
+### Stage 2.2 automated migration validation
+
+The React/TypeScript and Vite+ migration is implemented. Automated validation
+on October 30, 2026 observed:
+
+- A clean `npm ci`, Vite+ checks with warnings denied, HTML validation, production
+  build and 70 frontend tests passed. Existing audio/protocol assertions remain;
+  new tests cover React lifecycle, stale requests/session resets, settings
+  drafts and download-history races. `npm audit --audit-level=high` reported no
+  known vulnerabilities at that execution.
+- The full Python suite passed 183 tests with the ARM64 container test enabled;
+  Ruff passed. The AMD64 container test passed separately.
+- Both `linux/arm64` and `linux/amd64` images built and served the React shell,
+  JavaScript and CSS through the actual gateway. Private fixture secret mounts
+  and the unprivileged runtime checks passed. No model was loaded by these tests.
+- Chrome regression QA passed for the compiled frontend and the Vite+
+  development server. Representative Settings/Downloads light-theme screenshots
+  matched the recorded baseline pixel for pixel in the compared captures.
+  This does not establish all browser/device/animation states.
+
+The build still reports the large-chunk notice for the Three.js/React application
+bundle (about 823 kB, 221 kB gzipped). Static checks have no lint/type warnings;
+this bundle-size notice is a separate build diagnostic, not a performance
+measurement.
+
+Stage 2.2 awaits real deployment acceptance before stage 3: repeat the existing
+Mac model/audio/Finder/Load/Eject and mobile checks with the rebuilt webapp.
+The previously reported Clear downloads HTML response remains undiagnosed in
+that deployment. Its success and failure paths pass in fixtures and real mTLS
+API tests; that evidence does not identify the source of the reported HTML.
 
 ### Reported deployment validation
 
