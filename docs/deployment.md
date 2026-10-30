@@ -255,12 +255,10 @@ This is registry access, not Google login or Mac certificate validation.
 
 ### Controller certificates cannot be loaded
 
-`Controller certificates are missing or invalid.` in older images means the
-gateway failed to load its local TLS files **before connecting to the Mac**.
-Starting or restarting the Mac controller does not fix this failure. The current
-image prepares private secret files automatically and validates local TLS inputs
-before starting the server. Use the current Compose file and published image;
-normal startup and updates both use `docker compose up -d`.
+The gateway validates its local TLS inputs before connecting to the Mac.
+Starting the controller does not repair missing or invalid gateway certificate
+files. The image prepares private secret files automatically before starting
+the server. Use the supplied Compose file and published image.
 
 If the files themselves are missing, invalid or mismatched, the container startup
 log identifies that problem without exposing their contents. Copy all three

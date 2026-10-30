@@ -7,9 +7,11 @@ import time
 from contextlib import contextmanager
 from dataclasses import replace
 
+import pytest
 import uvicorn
 from controller.certificates import create_certificates
 from controller.config import ControllerConfig
+from controller.profiles import VoiceConfiguration
 from controller.server import create_app as controller_app
 from controller.supervisor import Supervisor
 from fastapi import FastAPI, WebSocket
@@ -25,7 +27,7 @@ def running(app, **options):
     listener.bind(("127.0.0.1", 0))
     port = listener.getsockname()[1]
     server = uvicorn.Server(
-        uvicorn.Config(app, log_level="critical", access_log=False, ws_max_size=8192, **options)
+        uvicorn.Config(app, log_level="critical", access_log=False, ws_max_size=65536, **options)
     )
     thread = threading.Thread(target=lambda: server.run(sockets=[listener]), daemon=True)
     thread.start()
@@ -43,7 +45,8 @@ def running(app, **options):
         assert not thread.is_alive(), "Test server did not stop"
 
 
-def test_browser_gateway_mtls_controller_and_private_worker(config, tmp_path):
+@pytest.mark.parametrize("versioned", [False, True])
+def test_browser_gateway_mtls_controller_and_private_worker(config, tmp_path, versioned):
     worker = FastAPI()
     bearer = "private-worker-test-token"
 
@@ -59,10 +62,26 @@ def test_browser_gateway_mtls_controller_and_private_worker(config, tmp_path):
         except WebSocketDisconnect:
             pass
 
+    @worker.websocket("/voice/v1/ws")
+    async def echo_versioned(websocket: WebSocket):
+        if websocket.headers.get("authorization") != f"Bearer {bearer}":
+            await websocket.close(1008)
+            return
+        await websocket.accept()
+        try:
+            assert await websocket.receive_json() == {"type": "session.start", "version": 1}
+            await websocket.send_json({"type": "session.ready", "sessionId": "fixture"})
+            while True:
+                await websocket.send_json(await websocket.receive_json())
+        except WebSocketDisconnect:
+            pass
+
     bundle = create_certificates(tmp_path / "tls", "127.0.0.1")
     with running(worker) as worker_port:
         native_config = ControllerConfig(worker_port=worker_port, data_dir=tmp_path / "native")
         manager = Supervisor(native_config)
+        if versioned:
+            manager.configuration = VoiceConfiguration(selectedProvider="lfm3-audio", revision=7)
         manager.state, manager._token = "ready", bearer
         with running(
             controller_app(native_config, manager),
@@ -85,10 +104,17 @@ def test_browser_gateway_mtls_controller_and_private_worker(config, tmp_path):
                 )
                 client.cookies.set(COOKIE, token, domain="voice.test", path="/")
                 with client.websocket_connect(
-                    "wss://voice.test/ws",
+                    "wss://voice.test" + ("/voice/v1/ws" if versioned else "/ws"),
                     headers={"Origin": config.public_url, "Cookie": f"{COOKIE}={token}"},
                 ) as stream:
-                    frame = b"\x00" * 7680
-                    stream.send_bytes(frame)
-                    assert stream.receive_bytes() == frame
+                    if versioned:
+                        stream.send_json({"type": "session.start", "version": 1})
+                        assert stream.receive_json()["settingsRevision"] == 7
+                        frame = {"type": "fixture.large", "value": "a" * 12000}
+                        stream.send_json(frame)
+                        assert stream.receive_json() == frame
+                    else:
+                        frame = b"\x00" * 7680
+                        stream.send_bytes(frame)
+                        assert stream.receive_bytes() == frame
                     assert manager.active

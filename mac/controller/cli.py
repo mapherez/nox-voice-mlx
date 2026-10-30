@@ -4,6 +4,7 @@ import argparse
 import ipaddress
 import ssl
 import sys
+import tarfile
 from pathlib import Path
 
 import httpx2 as httpx
@@ -23,14 +24,31 @@ def main():
     setup.add_argument("--host", required=True, help="Reserved private LAN IP address of this Mac")
     setup.add_argument("--port", type=int, default=8443)
     setup.add_argument("--worker-port", type=int, default=8000)
-    setup.add_argument("--weights-dir", type=Path, default=MAC_ROOT / "weights")
+    setup.add_argument(
+        "--weights-dir", type=Path, default=MAC_ROOT / "weights", help="Root for provider asset folders"
+    )
     sub.add_parser("controller", help="Run the controller manually; the model starts stopped")
     prepare = sub.add_parser("prepare-model", help="Download and verify the official model assets")
-    prepare.add_argument("--weights-dir", type=Path, default=MAC_ROOT / "weights")
+    prepare.add_argument(
+        "--weights-dir",
+        type=Path,
+        help="Override the shared weights root; otherwise use the controller configuration, or weights/ before setup",
+    )
+    prepare.add_argument("--provider", choices=["personaplex", "lfm3-audio"], default="personaplex")
+    prepare.add_argument(
+        "--from-experiment",
+        type=Path,
+        help="Explicit LFM3 experiment directory to copy verified model weights from",
+    )
     prepare.add_argument("--revision", help="Optional full official Hugging Face commit hash")
     prepare.add_argument(
         "--check", action="store_true", help="Verify the existing manifest offline"
     )
+    migrate = sub.add_parser(
+        "migrate-weights",
+        help="Move legacy assets into per-provider folders; stop the controller first",
+    )
+    migrate.add_argument("--weights-dir", type=Path, help="Override the shared weights root")
     auto = sub.add_parser("autostart", help="Manage optional controller startup after macOS login")
     auto.add_argument("action", choices=["enable", "disable", "status"])
     args = parser.parse_args()
@@ -61,15 +79,46 @@ def main():
             print(
                 "Client/server certificates expire in one year. Rotate using a new setup directory before expiry."
             )
-        elif args.command == "prepare-model":
-            from .model_files import prepare_model, verify_model
+        elif args.command in {"prepare-model", "migrate-weights"}:
+            weights = args.weights_dir
+            if weights is None:
+                weights = (
+                    load_config(args.config).weights_dir
+                    if args.config.is_file()
+                    else MAC_ROOT / "weights"
+                )
+            weights = weights.resolve()
+            if args.command == "migrate-weights":
+                from .weight_layout import migrate_weights
 
-            manifest = (
-                verify_model(args.weights_dir)
-                if args.check
-                else prepare_model(args.weights_dir, args.revision)
-            )
-            print(f"Model verified at official revision {manifest['revision']}.")
+                count = migrate_weights(weights)
+                print(f"Migrated {count} asset entries under {weights}.")
+                return
+            if args.provider == "lfm3-audio":
+                from engine.lfm3.assets import asset_root, manifest, prepare, verify
+
+                if args.revision or args.check and args.from_experiment:
+                    raise ValueError(
+                        "LFM3 uses its pinned revision. Source import applies only to preparation."
+                    )
+                root = asset_root(weights)
+                if args.check:
+                    verify(root)
+                else:
+                    prepare(root, args.from_experiment.resolve() if args.from_experiment else None)
+                print(
+                    f"LFM3 model verified at official revision {manifest()['model']['revision']}."
+                )
+            else:
+                if args.from_experiment:
+                    raise ValueError("--from-experiment is only available for LFM3 model weights.")
+                from .model_files import asset_root, prepare_model, verify_model
+
+                root = asset_root(weights)
+                manifest = (
+                    verify_model(root) if args.check else prepare_model(root, args.revision)
+                )
+                print(f"Model verified at official revision {manifest['revision']}.")
         elif args.command == "autostart":
             from . import autostart
 
@@ -107,13 +156,24 @@ def main():
                 ssl_cert_reqs=ssl.CERT_REQUIRED,
                 access_log=False,
                 proxy_headers=False,
-                ws_max_size=8192,
+                ws_max_size=65536,
                 ws_max_queue=4,
                 ws_ping_interval=20,
                 ws_ping_timeout=20,
             )
-    except (ValueError, OSError, ImportError, httpx.HTTPError) as error:
-        if args.command == "prepare-model" and not isinstance(error, ValueError):
+    except (
+        ValueError,
+        OSError,
+        RuntimeError,
+        ImportError,
+        tarfile.TarError,
+        httpx.HTTPError,
+    ) as error:
+        if (
+            args.command == "prepare-model"
+            and args.provider == "personaplex"
+            and not isinstance(error, ValueError)
+        ):
             parser.exit(
                 1,
                 "Model preparation failed. Install the engine extra, accept the official model terms and configure HF_TOKEN.\n",

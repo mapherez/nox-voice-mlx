@@ -106,6 +106,19 @@ class Controller:
             proxy=None,
         )
 
+    def voice_conversation(self):
+        return connect(
+            self.config.controller_url.replace("https://", "wss://", 1) + "/voice/v1/ws",
+            ssl=self.context(),
+            max_size=65536,
+            max_queue=4,
+            write_limit=32768,
+            ping_interval=20,
+            ping_timeout=20,
+            open_timeout=10,
+            proxy=None,
+        )
+
     async def close(self):
         if self._client:
             await self._client.aclose()

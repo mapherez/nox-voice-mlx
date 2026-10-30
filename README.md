@@ -20,8 +20,8 @@ order. Each command is labeled with the machine and working directory it needs.
 Browser → Docker webapp → private HTTPS/mTLS → Mac controller → local MLX engine
 ```
 
-The Mac service starts manually. Start and stop the model from the webapp's
-Settings drawer; stop the manual controller with Ctrl+C. Automatic startup is an
+The Mac service starts manually. Load and eject the model from the webapp's
+Settings workspace; stop the manual controller with Ctrl+C. Automatic startup is an
 optional setting described in the [Mac reference](docs/mac-setup.md).
 
 ## Access
@@ -42,13 +42,26 @@ login is required for both and needs Internet access to Google.
 
 - PersonaPlex 7B with 18 voice prompts, a configurable persona, and
   full/4/5/6/8-bit precision. **7B describes the parameter count**, not bit depth.
-- A light/dark interface with a Settings drawer and a procedural sphere that
-  reacts only to assistant playback.
+- Versioned model profiles and a controller-supplied model catalogue in Settings.
+  PersonaPlex keeps its existing conversation flow. LFM3 now provides explicit
+  transcription/speech checks in this webapp, with Space/touch interruption and
+  independent language/voice settings. Its executor and conversation flow are
+  the next implementation stage; the isolated experiment remains separate.
+- Download either model from Settings, with per-file/total progress, cancel and
+  resume in the Download Manager. Load/Eject controls memory independently of
+  downloads. Open each model folder in Finder on the controller Mac.
+- A general Credentials section with private Hugging Face token storage and
+  access testing. PersonaPlex needs model access and a read token; LFM3 downloads
+  directly. No manual model-file downloads are required.
+- A light/dark interface, Settings organized into tabs, and a procedural sphere
+  that reacts only to assistant playback.
 - One active conversation at a time. The app does not persist audio or
-  transcripts; it persists settings and authenticated sessions.
+  transcripts; it persists settings, credentials, recent download jobs and
+  authenticated sessions.
 - The Mac must be awake and running its controller. Performance and memory use
   depend on the Mac, model precision and network.
-- The official model supports English. Other languages are experimental.
+- PersonaPlex officially supports English. LFM3 language controls follow its
+  pinned runtime; language and speech quality require evaluation on your device.
 
 The current engine requires Apple Silicon; Intel Macs are not supported. Use
 native ARM64 Python 3.12. Normal Docker deployment does not require Node or npm.
@@ -61,6 +74,7 @@ native ARM64 Python 3.12. Normal Docker deployment does not require Node or npm.
 | [Mac reference](docs/mac-setup.md)         | Paths, ports, moving the installation, optional autostart and certificate renewal |
 | [Deployment reference](docs/deployment.md) | Environment variables, secrets, LAN/external access, updates and troubleshooting  |
 | [Architecture](docs/architecture.md)       | Authentication, transport, model loading and privacy boundaries                   |
+| [Multi-model engine contract](docs/voice-engine-contract.md) | Agreed target and implementation progress for PersonaPlex/LFM3, settings, interruption, tasks and NoX Suite integration |
 | [Validation](docs/validation.md)           | Development checks and deployment acceptance                                      |
 | [Third-party notices](docs/notices.md)     | Licenses and upstream components                                                  |
 
@@ -72,7 +86,7 @@ native ARM64 Python 3.12. Normal Docker deployment does not require Node or npm.
 | `gateway/`            | Authentication, sessions and audio proxy                       |
 | `mac/controller/`     | Native controller, certificates and process lifecycle          |
 | `mac/engine/`         | PersonaPlex MLX inference worker                               |
-| `mac/weights/`        | Local model files; large assets are excluded from Git          |
+| `mac/weights/`        | Separate `personaplex/` and `lfm3-audio/` asset folders; large assets are excluded from Git |
 | `deploy/`             | Compose, image build definition and environment template       |
 | `tests/`              | Security, lifecycle, streaming and native compatibility checks |
 | `vendor/personaplex/` | Pinned NVIDIA reference submodule                              |

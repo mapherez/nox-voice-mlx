@@ -221,13 +221,13 @@ def main():
     parser.add_argument(
         "--input",
         type=str,
-        default="weights/model.safetensors",
+        default="weights/personaplex/model.safetensors",
         help="Path to PersonaPlex safetensors file",
     )
     parser.add_argument(
         "--output",
         type=str,
-        default="weights/model_mlx.safetensors",
+        default="weights/personaplex/model_mlx.safetensors",
         help="Output path for MLX weights",
     )
     parser.add_argument(

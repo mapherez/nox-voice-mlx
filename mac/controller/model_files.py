@@ -18,6 +18,14 @@ ASSETS = (
 )
 
 
+def asset_root(weights_dir: Path) -> Path:
+    return weights_dir / "personaplex"
+
+
+def artifact_manifest() -> dict:
+    return json.loads(Path(__file__).with_name("personaplex-artifacts.json").read_text())
+
+
 def digest(path: Path) -> str:
     result = hashlib.sha256()
     with path.open("rb") as stream:
@@ -100,6 +108,7 @@ def prepare_model(directory: Path, revision: str | None = None) -> dict:
 
     if revision and not re.fullmatch(r"[a-f0-9]{40}", revision):
         raise ValueError("Use a full 40-character official commit hash for --revision.")
+    revision = revision or artifact_manifest()["revision"]
     token = get_token()
     info = HfApi().model_info(REPOSITORY, revision=revision, token=token, files_metadata=True)
     if not info.sha or not re.fullmatch(r"[a-f0-9]{40}", info.sha):

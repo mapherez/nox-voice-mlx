@@ -8,14 +8,16 @@ reference documents are for later configuration and maintenance.
 You need:
 
 - An **Apple Silicon Mac**, with native ARM64 Python support and enough memory
-  and disk for PersonaPlex. Allow approximately 17 GB for model downloads, plus
-  dependencies and download cache. Memory use varies with precision.
+  and disk for your selected model. PersonaPlex downloads about 17.1 GB; LFM3
+  downloads about 2.43 GB including its runtime. Allow additional space for
+  dependencies and preparation. Memory use varies with model and precision.
 - **uv** on the Mac. Use the [official installation instructions](https://docs.astral.sh/uv/getting-started/installation/)
   if it is not installed.
 - A **Docker host** with Docker Engine or Docker Desktop, Docker Compose and the
   OpenSSL command-line tool. The webapp image supports amd64 and arm64.
-- A Hugging Face account with access to the official model, and a Google account
-  and OAuth client for browser sign-in.
+- A Google account and OAuth client for browser sign-in. PersonaPlex also needs a
+  Hugging Face account, accepted model access terms and a read token. LFM3
+  downloads directly without a token.
 - A private network connection from the Docker host to the Mac. They may be the
   same physical computer, but Docker must be able to reach the Mac's LAN IP.
 
@@ -51,56 +53,7 @@ uv sync --locked --extra engine --python 3.12
 **Checkpoint:** installation finishes successfully. A hidden `.venv/` folder is
 created in the installation directory.
 
-## 2. Prepare the model
-
-**Where:** the same Mac terminal and installation directory.
-
-1. Sign in to the [official PersonaPlex model page](https://huggingface.co/nvidia/personaplex-7b-v1)
-   and accept its access terms.
-2. Create a Hugging Face read token authorized for that model. See
-   [Hugging Face token instructions](https://huggingface.co/docs/hub/security-tokens).
-3. In the Mac's default **zsh** shell, run this line on its own:
-
-   ```zsh
-   read -r -s "HF_TOKEN?Hugging Face token: "
-   ```
-
-   When the prompt appears, paste the token and press Enter. Input is hidden.
-   The token is entered at the prompt, not added to the command text.
-
-4. Make it available to the download command:
-
-   ```zsh
-   printf '\n'
-   export HF_TOKEN
-   ```
-
-5. Download and prepare the assets:
-
-   ```sh
-   uv run --locked --extra engine nox-voice prepare-model
-   ```
-
-6. Wait for that command to succeed, then verify the local files:
-
-   ```sh
-   uv run --locked --extra engine nox-voice prepare-model --check
-   ```
-
-7. Remove the token from this shell's environment:
-
-   ```sh
-   unset HF_TOKEN
-   ```
-
-The first model command downloads official files, extracts the voice prompts and
-creates an integrity manifest. The second checks the prepared files offline.
-Neither command trains or reconstructs the model.
-
-**Checkpoint:** verification prints `Model verified at official revision`.
-Keep tokens out of command arguments, source files and shared logs.
-
-## 3. Configure and start the Mac controller
+## 2. Configure and start the Mac controller
 
 **Where:** the same Mac terminal and installation directory.
 
@@ -152,7 +105,7 @@ Leave this terminal open and the Mac awake. **Ctrl+C stops the controller and
 its worker.** This command does not enable startup at login. Do not open the
 controller URL in a browser; it is a private API requiring a client certificate.
 
-## 4. Prepare the Docker deployment directory
+## 3. Prepare the Docker deployment directory
 
 **Where:** the Docker host. Use a new terminal in a dedicated directory of your
 choice; this is the **deployment directory** for all Docker commands below.
@@ -185,7 +138,7 @@ is not the generated certificate directory. The model and engine remain on the M
 **Checkpoint:** `compose.yaml`, `.env` and those three files are in the deployment
 directory. Do not copy the Mac's CA private key or server private key.
 
-## 5. Configure Google login and the environment
+## 4. Configure Google login and the environment
 
 **Where:** Google Cloud in a browser, then `.env` on the Docker host.
 
@@ -224,7 +177,7 @@ does not change the Mac controller's port.
 URL) have been filled in. The Google client secret is saved in the next step,
 not in `.env`.
 
-## 6. Create the two remaining secret files
+## 5. Create the two remaining secret files
 
 **Where:** the deployment directory on the Docker host.
 
@@ -278,7 +231,7 @@ deployment-directory/
 
 Cloudflare is not needed for this local installation.
 
-## 7. Start the webapp
+## 6. Start the webapp
 
 **Where:** the deployment directory on the Docker host.
 
@@ -294,20 +247,36 @@ the optional tunnel profile remains off. If image pulling reports `unauthorized`
 use [GHCR troubleshooting](deployment.md#image-pull-is-unauthorized) before
 changing anything on the Mac.
 
-## 8. Open the app and start a conversation
+## 7. Open the app and start a conversation
 
 **Where:** a browser on the Docker host.
 
 1. Open **http://localhost:8080**, using the configured port if you changed it.
 2. Sign in with the Google account in `NOX_VOICE_OWNER_EMAIL`.
-3. Open **Settings → Connection → Test connection**.
-4. Open **Settings → Engine → Start engine** and wait for **Ready**.
-5. Close Settings, click **Start conversation**, and allow microphone access.
+3. Open **Settings → General → Test connection**.
+4. In **Settings → Models**, select PersonaPlex or LFM3-Audio.
+5. For PersonaPlex, open **Credentials**, follow **Model access terms** and
+   **Create a token**, save a read token and click **Test access**. LFM3 does not
+   require a token.
+6. In **Models**, click **Download**. The Download Manager shows file/total
+   progress, speed, preparation and verification. You can close the window;
+   downloads continue on the Mac. Use **Cancel download** or **Retry / resume**
+   there when needed. No manual file downloads are required.
+7. Click **Load** once the files are available. Wait for **Model loaded**.
+8. Close Settings and click **Start conversation** for PersonaPlex, or **Check
+   audio** for LFM3. Allow microphone access when prompted.
 
-The sphere reacts to assistant playback only. **Mute** disables microphone
-capture while keeping assistant playback active. **End conversation** ends the
-audio session. **Stop** in Engine settings unloads the model while leaving the
-controller available. **Ctrl+C in the Mac terminal** stops the controller too.
+**Download** saves files; **Load** loads the model into memory; **Eject** releases
+that memory while keeping the downloaded files. Selecting a model never starts a
+download or inference. **Open folder** opens Finder on the controller Mac, even
+when the browser is on another device; a graphical login on that Mac is required.
+
+PersonaPlex supports continuous voice conversation. LFM3 currently provides
+push-to-talk transcription and reading supplied text aloud; executor/MCP support
+is a separate planned stage. The sphere reacts only to assistant playback.
+**End conversation** releases the microphone. **Ctrl+C in the Mac terminal**
+stops the controller, its model worker and active downloads. Interrupted downloads
+can be resumed explicitly after restarting; models never load automatically.
 
 ### If the browser is on another device
 

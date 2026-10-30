@@ -3,6 +3,7 @@
 import asyncio
 import hmac
 import os
+import re
 from contextlib import asynccontextmanager, suppress
 
 import anyio
@@ -313,6 +314,121 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
             return JSONResponse({"error": "Invalid settings."}, status_code=422)
         return await forward("PUT", "/api/settings", value, timeout=180)
 
+    async def forward_voice(method: str, path: str, payload=None, timeout=8):
+        try:
+            status, value = await remote.request(method, path, payload, timeout=timeout)
+            if status < 400:
+                return JSONResponse(value, status_code=status)
+            messages = {
+                404: "Model profiles are not available on this controller.",
+                409: "Settings changed or the engine is busy. Reload Settings or end the conversation before trying again.",
+                422: "Invalid model settings.",
+                503: "The selected model is unavailable. Check model preparation and the native controller.",
+            }
+            return JSONResponse(
+                {"error": value["error"] if isinstance(value.get("error"), str) and len(value["error"]) <= 500 else messages.get(status, "Controller could not complete the request.")},
+                status_code=status if status in messages else 502,
+            )
+        except ControllerUnavailable as error:
+            return JSONResponse({"error": str(error)}, status_code=503)
+
+    @app.get("/api/voice/v1/providers")
+    async def get_providers():
+        return await forward_voice("GET", "/api/voice/v1/providers")
+
+    @app.get("/api/voice/v1/settings")
+    async def get_profiles():
+        return await forward_voice("GET", "/api/voice/v1/settings")
+
+    @app.put("/api/voice/v1/settings")
+    async def update_profiles(request: Request):
+        try:
+            value = await request.json()
+        except ValueError:
+            return JSONResponse({"error": "Invalid model settings."}, status_code=400)
+        if (
+            not isinstance(value, dict)
+            or set(value) != {"schemaVersion", "revision", "selectedProvider", "profiles"}
+            or type(value.get("schemaVersion")) is not int
+            or value["schemaVersion"] != 1
+            or type(value.get("revision")) is not int
+            or value["revision"] < 0
+            or not isinstance(value.get("selectedProvider"), str)
+            or not isinstance(value.get("profiles"), dict)
+        ):
+            return JSONResponse({"error": "Invalid model settings."}, status_code=422)
+        return await forward_voice("PUT", "/api/voice/v1/settings", value, timeout=180)
+
+    @app.get("/api/voice/v1/engine/status")
+    async def get_provider_status():
+        return await forward_voice("GET", "/api/voice/v1/engine/status")
+
+    @app.post("/api/voice/v1/engine/{action}")
+    async def provider_action(action: str):
+        if action not in {"start", "stop", "restart", "load", "eject"}:
+            return JSONResponse({"error": "Unknown engine action."}, status_code=404)
+        return await forward_voice("POST", f"/api/voice/v1/engine/{action}", timeout=20)
+
+    @app.get("/api/voice/v1/models")
+    async def model_library():
+        return await forward_voice("GET", "/api/voice/v1/models")
+
+    @app.get("/api/voice/v1/downloads")
+    async def downloads():
+        return await forward_voice("GET", "/api/voice/v1/downloads")
+
+    @app.post("/api/voice/v1/downloads")
+    async def download(request: Request):
+        try:
+            value = await request.json()
+        except ValueError:
+            return JSONResponse({"error": "Invalid download request."}, status_code=422)
+        if not isinstance(value, dict) or set(value) != {"provider"} or not isinstance(value["provider"], str) or value["provider"] not in {"personaplex", "lfm3-audio"}:
+            return JSONResponse({"error": "Choose a supported model."}, status_code=422)
+        return await forward_voice("POST", "/api/voice/v1/downloads", value)
+
+    @app.post("/api/voice/v1/downloads/{download_id}/{action}")
+    async def download_action(download_id: str, action: str):
+        if not re.fullmatch(r"[a-f0-9]{24}", download_id) or action not in {"cancel", "retry"}:
+            return JSONResponse({"error": "Unknown download action."}, status_code=404)
+        return await forward_voice("POST", f"/api/voice/v1/downloads/{download_id}/{action}", timeout=15)
+
+    @app.post("/api/voice/v1/providers/{provider_id}/open-folder")
+    async def open_model_folder(provider_id: str):
+        if provider_id not in {"personaplex", "lfm3-audio"}:
+            return JSONResponse({"error": "Unknown model."}, status_code=404)
+        return await forward_voice("POST", f"/api/voice/v1/providers/{provider_id}/open-folder")
+
+    @app.get("/api/voice/v1/credentials")
+    async def credentials():
+        return await forward_voice("GET", "/api/voice/v1/credentials")
+
+    @app.api_route("/api/voice/v1/credentials/{service}", methods=["PUT", "DELETE"])
+    async def credential_write(service: str, request: Request):
+        if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", service):
+            return JSONResponse({"error": "Unknown credential service."}, status_code=404)
+        value = None
+        if request.method == "PUT":
+            try:
+                value = await request.json()
+            except ValueError:
+                return JSONResponse({"error": "Enter a valid access token."}, status_code=422)
+            if not isinstance(value, dict) or set(value) != {"secret"} or not isinstance(value["secret"], str) or not 8 <= len(value["secret"]) <= 512 or any(char in value["secret"] for char in "\r\n"):
+                return JSONResponse({"error": "Enter a valid access token."}, status_code=422)
+        return await forward_voice(request.method, f"/api/voice/v1/credentials/{service}", value)
+
+    @app.post("/api/voice/v1/credentials/{service}/test")
+    async def credential_test(service: str):
+        if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", service):
+            return JSONResponse({"error": "Unknown credential service."}, status_code=404)
+        return await forward_voice("POST", f"/api/voice/v1/credentials/{service}/test", timeout=70)
+
+    @app.post("/api/voice/v1/providers/{provider_id}/prepare")
+    async def prepare_provider(provider_id: str):
+        if provider_id != "lfm3-audio":
+            return JSONResponse({"error": "Unknown model preparation action."}, status_code=404)
+        return await forward_voice("POST", "/api/voice/v1/providers/lfm3-audio/prepare")
+
     @app.get("/api/diagnostics")
     async def diagnostics():
         result = await forward("GET", "/api/diagnostics")
@@ -327,8 +443,7 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
     async def events():
         return await forward("GET", "/api/events")
 
-    @app.websocket("/ws")
-    async def conversation(socket: WebSocket):
+    async def audio_stream(socket: WebSocket, *, versioned: bool):
         origin = socket.state.browser_origin
         token = socket.cookies.get(cookie_name(origin.startswith("https://")))
         if socket.headers.get("origin") != origin or not sessions.get(token, origin):
@@ -336,7 +451,8 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
             return
         tasks = []
         try:
-            async with remote.conversation() as upstream:
+            connection = remote.voice_conversation() if versioned else remote.conversation()
+            async with connection as upstream:
                 await socket.accept()
                 connections.setdefault(token, set()).add(socket)
 
@@ -345,8 +461,13 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
                         message = await socket.receive()
                         if message["type"] == "websocket.disconnect":
                             return
-                        data = message.get("bytes")
-                        if data is None or len(data) != 7680:
+                        data = message.get("text") if versioned else message.get("bytes")
+                        invalid = (
+                            data is None
+                            or (versioned and len(data.encode("utf-8")) > 65536)
+                            or (not versioned and len(data) != 7680)
+                        )
+                        if invalid:
                             await socket.close(1003, "Invalid audio frame.")
                             return
                         await upstream.send(data)
@@ -354,6 +475,9 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
                 async def to_browser():
                     async for data in upstream:
                         if isinstance(data, bytes):
+                            if versioned:
+                                await socket.close(1003, "Invalid audio event.")
+                                return
                             await socket.send_bytes(data)
                         else:
                             await socket.send_text(data)
@@ -393,6 +517,14 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
                 with suppress(RuntimeError, WebSocketDisconnect):
                     await socket.close(1000)
 
+    @app.websocket("/ws")
+    async def conversation(socket: WebSocket):
+        await audio_stream(socket, versioned=False)
+
+    @app.websocket("/voice/v1/ws")
+    async def versioned_conversation(socket: WebSocket):
+        await audio_stream(socket, versioned=True)
+
     @app.get("/")
     async def index():
         path = config.static_dir / "index.html"
@@ -417,7 +549,7 @@ def main():
         port=int(os.environ.get("NOX_VOICE_PORT", "8080")),
         access_log=False,
         proxy_headers=False,
-        ws_max_size=8192,
+        ws_max_size=65536,
         ws_max_queue=4,
         ws_ping_interval=20,
         ws_ping_timeout=20,

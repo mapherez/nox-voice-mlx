@@ -9,7 +9,8 @@ from pathlib import Path
 
 def main():
     os.environ.setdefault(
-        "NOX_VOICE_WEIGHTS_DIR", str(Path(__file__).resolve().parents[2] / "mac" / "weights")
+        "NOX_VOICE_WEIGHTS_DIR",
+        str(Path(__file__).resolve().parents[2] / "mac" / "weights" / "personaplex"),
     )
     os.environ["HF_HUB_OFFLINE"] = "1"
     import mlx.core as mx

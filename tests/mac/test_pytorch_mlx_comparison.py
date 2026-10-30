@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MODEL_PATH = REPO_ROOT / "mac" / "weights" / "model.safetensors"
+MODEL_PATH = REPO_ROOT / "mac" / "weights" / "personaplex" / "model.safetensors"
 
 SILENCE_TOKENS = np.array([948, 243, 1178, 546, 1736, 1030, 1978, 2008], dtype=np.int64)
 

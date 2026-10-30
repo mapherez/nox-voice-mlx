@@ -36,6 +36,67 @@ audio resampling. Provider and model mocks do not replace real deployment tests.
 Dependency audits report known advisories at execution time, not a guarantee
 that all code is free of vulnerabilities.
 
+The [multi-model stages](voice-engine-contract.md#14-implementation-sequence-and-acceptance)
+cover independent profiles, revision conflicts, PersonaPlex streaming, provider
+asset roots, pinned downloads, resume/restart ranges and checksum failures,
+credential redaction/private permissions/access tests, owned download cancellation
+and restart recovery, native Finder actions, and explicit Load/Eject behaviour.
+LFM3 checks cover the real mTLS transport with a fixture worker, ASR/TTS protocol,
+cancellation, capture flush ordering and rejection of late audio/turn events.
+
+For optional browser verification of the main Settings workspace, build the frontend
+and provide the module path of a locally installed Playwright package:
+
+```text
+uv run --locked python tests/browser/providers_host.py PLAYWRIGHT_MODULE
+```
+
+Replace `PLAYWRIGHT_MODULE` with its `playwright/index.mjs` path. This harness uses
+a disposable Chrome profile under `.tmp/`, its own synthetic preview server and
+no real controller, microphone, model, credentials or Google account. It verifies
+Settings tab navigation, save/conflict/reload, credential save/test/remove,
+Download Manager activity/cancel/resume, native-folder API feedback, explicit
+Load/Eject, mobile layout and LFM3 keyboard/touch capture/interruption with a
+fake microphone. Screenshots cover desktop and mobile. It does not establish
+Safari or physical mobile-device compatibility.
+
+### Opt-in live LFM3 check
+
+From the repository root, explicitly supply the existing experiment directory:
+
+```text
+uv run --locked python tests/mac/lfm3_live.py --experiment EXPERIMENT_DIRECTORY
+uv run --locked python tests/mac/lfm3_live.py --experiment EXPERIMENT_DIRECTORY --language Portuguese
+```
+
+This creates a disposable installation under `.tmp/`, verifies the two source
+weights, hard-links them read-only by convention, and copies the experiment's
+pinned runtime for the test. It never modifies source model files and removes
+the fixture afterwards. Production imports copy verified weights and download
+the pinned runtime instead. The test owns and stops its worker/native child;
+it does not connect to an existing controller, microphone, MCP app or LLM service.
+
+Observed on October 29, 2026: the real worker became ready in about 6.8 seconds,
+the first TTS packet arrived in about 0.07 seconds, and the model transcribed the
+complete synthetic instruction “Find all notes with the title Hello World and
+delete the results” in two separate turns, including after interrupting synthesis.
+Each ASR test took about 1.7 seconds including accelerated packet delivery. Both
+owned processes exited on Stop and their temporary installation was removed.
+The Portuguese variant also transcribed “Lista todos os recursos e apaga os
+resultados” completely in two turns (about 1.5 seconds each), including after
+interruption. These are smoke-test observations using synthesized speech, not
+microphone quality, end-user latency or PT-PT synthesis acceptance measurements.
+No tools were executed. Desktop Chrome browser QA also passed with a fake
+microphone and synthetic controller responses; physical iPhone/Safari testing
+remains part of deployment acceptance.
+
+Run the checks above for the current results. Docker startup/UID/secret-permission
+integration is optional locally and runs in CI when a test image is selected.
+No model downloads or real Hugging Face credentials are needed for the automated
+suite. Model metadata can be checked read-only against Hugging Face; full gated
+PersonaPlex download acceptance requires an authorized user token. Native Finder
+launch is mocked in tests to avoid opening windows on the developer's desktop.
+
 CI also builds the Linux Docker image and starts it with mode `600` secret files
 owned by a different host UID. It checks that the service becomes healthy, runs
 as UID/GID `10001` with no effective capabilities or supplementary groups, and
@@ -72,6 +133,10 @@ Use the actual model, identity provider configuration and target devices:
 | Lifecycle        | Repeated Start creates one worker; Stop cancels loading and releases model memory                            |
 | Isolation        | A second conversation cannot reset or modify the active conversation                                         |
 | Settings         | Voice, persona and precision changes work while idle; active conversations block changes                     |
+| Downloads        | Both models download with progress, cancel/resume and verification; errors identify credentials, terms, network or disk space |
+| Model memory     | Download/save never load inference; Load/Eject manage only owned workers and preserve files |
+| Credentials      | Save/test/replace/remove work; reads, validation errors and logs never expose the secret |
+| Native folders   | Open folder launches Finder on the controller Mac; missing graphical login has actionable feedback |
 | Audio            | Capture, mute, interruption and playback work on the intended desktop and mobile browsers                    |
 | Visualization    | Only assistant playback drives the sphere; microphone input does not                                         |
 | Accessibility    | Drawer keyboard/focus, themes, narrow layouts, reduced motion and WebGL fallback work                        |

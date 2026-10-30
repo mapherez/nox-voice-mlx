@@ -28,15 +28,11 @@ ENV/
 .LSOverride
 
 # Weights (too large for git)
-mac/weights/*.safetensors
-mac/weights/*.pt
-mac/weights/*.tgz
-mac/weights/voices_cpu/
-mac/weights/manifest.json
-mac/weights/.cache/
-
-# Keep config
-!mac/weights/config.json
+mac/weights/*
+!mac/weights/personaplex/
+mac/weights/personaplex/*
+!mac/weights/personaplex/config.json
+!mac/weights/personaplex/tokenizer_spm_32k_3.model
 
 # Logs
 *.log

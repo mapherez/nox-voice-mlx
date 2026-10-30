@@ -1,0 +1,24 @@
+{
+  "runtime": {
+    "version": "b11960",
+    "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11960/llama-b11960-bin-macos-arm64.tar.gz",
+    "sha256": "58e5a5e1d7c2bf66cedd9c29e0323f3e570660a70a1e2156d32eed08f4cc1e3c",
+    "size": 16465074
+  },
+  "model": {
+    "repository": "LiquidAI/LFM3-Audio-2B-GGUF",
+    "revision": "642697a5597a675cb819ed236ac415c1e60a4f6f",
+    "files": [
+      {
+        "name": "LFM3-Audio-2B-Q8_0.gguf",
+        "sha256": "d4e36902ba8f0ee7b333596030a59d650f88ac76660b4d9ba5ff77c3c2258fc0",
+        "size": 1846236704
+      },
+      {
+        "name": "mmproj-LFM3-Audio-2B-BF16.gguf",
+        "sha256": "c20fced222c6b7e7bcd32eb0480fad5108f9ea26cadca4f106fac37747868ed9",
+        "size": 570846400
+      }
+    ]
+  }
+}

@@ -1,0 +1,176 @@
+// Settings QA against a disposable preview; never an existing browser profile.
+import assert from "node:assert/strict";
+import { mkdtemp, mkdir, rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const { chromium } = await import(pathToFileURL(resolve(process.argv[2])).href);
+const url = process.argv[3];
+const temporary = resolve(".tmp");
+await mkdir(temporary, { recursive: true });
+const profile = await mkdtemp(join(temporary, "provider-browser-"));
+const browser = await chromium.launchPersistentContext(profile, {
+  executablePath:
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  headless: true,
+  reducedMotion: "reduce",
+  hasTouch: true,
+  viewport: { width: 1280, height: 900 },
+  env: { PATH: "/usr/bin:/bin", TMPDIR: `${temporary}/` },
+  args: [
+    "--disable-breakpad",
+    "--disable-crash-reporter",
+    "--use-fake-device-for-media-stream",
+    "--use-fake-ui-for-media-stream",
+    `--disk-cache-dir=${profile}/cache`,
+  ],
+});
+const errors = [];
+try {
+  const page = await browser.newPage();
+  const audioMessages = [];
+  let sequence = 0;
+  await page.routeWebSocket("**/voice/v1/ws", (wire) => {
+    const emit = (value) => wire.send(JSON.stringify({ sessionId: "browser-fixture", sequence: ++sequence, ...value }));
+    wire.onMessage((raw) => {
+      const value = JSON.parse(String(raw));
+      audioMessages.push(value);
+      if (value.type === "session.start") emit({ type: "session.ready", version: 1, audio: { inputRate: 16000, outputRate: 24000, format: "pcm16le" } });
+      else if (value.type === "turn.start") emit({ type: "turn.started", turnId: value.turnId });
+      else if (value.type === "turn.commit") emit({ type: "transcript.completed", turnId: value.turnId, text: "Find all matching resources and delete the results." });
+      else if (value.type === "speech.request") {
+        emit({ type: "speech.started", playbackId: value.playbackId });
+        emit({ type: "speech.audio", playbackId: value.playbackId, audio: Buffer.alloc(3840).toString("base64") });
+      } else if (value.type === "speech.interrupt") {
+        emit({ type: "speech.interrupted", playbackId: value.playbackId });
+        // A delayed frame from the old playback must never resume that speech.
+        emit({ type: "speech.audio", playbackId: value.playbackId, audio: Buffer.alloc(3840).toString("base64") });
+      }
+    });
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto(url);
+  await page.locator("#open-settings").click();
+  await page.waitForFunction(() => !document.getElementById("save-settings").disabled);
+  assert.equal(await page.locator('[role="tab"]').count(), 4);
+  assert.equal(await page.locator("#model-provider option").count(), 2);
+  await page.screenshot({ path: join(temporary, "settings-models-desktop.png"), fullPage: true });
+  // Native folder action calls the controller; there is no web file explorer.
+  await page.locator("#open-model-folder").click();
+  await page.waitForFunction(() => document.getElementById("model-feedback").textContent.includes("Finder"));
+  await page.locator("#tab-credentials").click();
+  await page.locator("#credential-huggingface").fill("hf_disposableBrowserFixture123");
+  await page.locator("#credential-save-huggingface").click();
+  await page.waitForFunction(() => document.getElementById("credential-state-huggingface").textContent === "Token saved");
+  assert.equal(await page.locator("#credential-huggingface").inputValue(), "");
+  assert.equal((await page.locator("#panel-credentials").innerText()).includes("disposableBrowserFixture"), false);
+  await page.locator("#credential-test-huggingface").click();
+  await page.waitForFunction(() => document.getElementById("credential-feedback-huggingface").textContent.includes("confirmed"));
+  await page.screenshot({ path: join(temporary, "settings-credentials-desktop.png"), fullPage: true });
+  await page.locator("#credential-remove-huggingface").click();
+  await page.waitForFunction(() => document.getElementById("credential-state-huggingface").textContent === "Not configured");
+  await page.locator("#tab-voice").click();
+  assert.equal(await page.locator("#voice option").count(), 18);
+  assert.equal(await page.locator("#quantization option").count(), 5);
+  await page.locator("#persona").fill("A concise persona entered through the main webapp.");
+  await page.locator("#save-settings").click();
+  await page.waitForFunction(() => document.getElementById("settings-feedback").textContent.includes("saved"));
+  const value = await (await page.request.get(`${url}/api/voice/v1/settings`)).json();
+  assert.equal(value.profiles.personaplex.prompt, "A concise persona entered through the main webapp.");
+  value.profiles["lfm3-audio"].voice = "male";
+  await page.request.put(`${url}/api/voice/v1/settings`, { data: value });
+  await page.locator("#persona").fill("Keep this edit while showing a revision conflict.");
+  await page.locator("#save-settings").click();
+  await page.locator("#reload-settings").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#persona").inputValue(), "Keep this edit while showing a revision conflict.");
+  await page.locator("#reload-settings").click();
+  await page.waitForFunction(() => document.getElementById("persona").value === "A concise persona entered through the main webapp.");
+  await page.screenshot({ path: join(temporary, "settings-voice-desktop.png"), fullPage: true });
+  await page.locator("#tab-models").click();
+  await page.locator("#model-provider").selectOption("lfm3-audio");
+  assert.equal(await page.locator("#start-engine").isDisabled(), true);
+  // Browsing/downloading a model does not change the saved selection or load inference.
+  assert.equal((await (await page.request.get(`${url}/api/voice/v1/settings`)).json()).selectedProvider, "personaplex");
+  await page.locator("#prepare-model").click();
+  await page.locator("#downloads").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#open-downloads").getAttribute("data-state"), "active");
+  await page.screenshot({ path: join(temporary, "downloads-active-desktop.png"), fullPage: true });
+  await page.getByRole("button", { name: "Cancel download" }).first().click();
+  await page.getByRole("button", { name: "Retry / resume" }).first().waitFor();
+  await page.getByRole("button", { name: "Retry / resume" }).first().click();
+  await page.locator("#close-downloads").click();
+  await page.waitForFunction(() => document.getElementById("model-local-state").textContent === "Verified on disk");
+  assert.equal((await (await page.request.get(`${url}/api/engine/status`)).json()).state, "stopped");
+  await page.locator("#tab-voice").click();
+  assert.equal(await page.locator("#precision-settings").isVisible(), false);
+  assert.equal(await page.locator("#transcription-settings").isVisible(), true);
+  await page.locator("#input-language").selectOption("Portuguese");
+  await page.locator("#vocabulary").fill("Names supplied by the user");
+  await page.locator("#save-settings").click();
+  await page.waitForFunction(() => document.getElementById("settings-feedback").textContent.includes("saved"));
+  assert.equal((await (await page.request.get(`${url}/api/engine/status`)).json()).state, "stopped");
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const tab of ["models", "voice", "credentials", "general"]) {
+    await page.locator(`#tab-${tab}`).click();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    assert.ok(await page.locator("#settings").evaluate((el) => el.scrollWidth <= el.clientWidth));
+    await page.screenshot({ path: join(temporary, `settings-${tab}-mobile.png`), fullPage: true });
+  }
+  await page.locator("#tab-models").click();
+  await page.locator("#start-engine").click();
+  await page.waitForFunction(() => document.getElementById("header-state").textContent === "Model loaded");
+  assert.equal(await page.locator("#loaded-model-name").textContent(), "LFM3-Audio-2B");
+  await page.locator("#close-settings").click();
+  assert.equal(await page.locator("#start-conversation-label").innerText(), "Check audio");
+  await page.locator("#start-conversation").click();
+  await page.locator("#audio-checks").waitFor({ state: "visible" });
+  await page.locator("#hold-to-talk").focus();
+  await page.keyboard.down("Space");
+  await page.waitForFunction(() => document.getElementById("hold-to-talk").getAttribute("aria-pressed") === "true");
+  await page.waitForTimeout(350);
+  await page.keyboard.up("Space");
+  await page.waitForFunction(() => document.getElementById("transcript").textContent.startsWith("Find all"));
+  assert.ok(audioMessages.some((message) => message.type === "input.audio"));
+  const lastAudio = audioMessages.findLastIndex((message) => message.type === "input.audio");
+  const firstCommit = audioMessages.findIndex((message) => message.type === "turn.commit");
+  assert.ok(lastAudio < firstCommit);
+  await page.locator("#speech-text").fill("An audio check without executing any tools.");
+  await page.locator("#read-aloud").click();
+  await page.waitForFunction(() => !document.getElementById("stop-speech").disabled);
+  await page.locator("#hold-to-talk").focus();
+  await page.keyboard.down("Space");
+  await page.waitForTimeout(150);
+  await page.keyboard.up("Space");
+  await page.waitForFunction(() => document.getElementById("audio-check-state").textContent === "Ready to listen");
+  assert.ok(audioMessages.some((message) => message.type === "speech.interrupt"));
+  // Text fields retain normal typing: Space must not start another audio turn.
+  const turns = audioMessages.filter((message) => message.type === "turn.start").length;
+  await page.locator("#speech-text").focus();
+  await page.keyboard.press("Space");
+  assert.equal(audioMessages.filter((message) => message.type === "turn.start").length, turns);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const rect = await page.locator("#hold-to-talk").boundingBox();
+  const cdp = await browser.newCDPSession(page);
+  const touchPoints = [{ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }];
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints });
+  await page.waitForTimeout(200);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForFunction(() => document.getElementById("audio-check-state").textContent === "Ready to listen");
+  assert.equal(audioMessages.filter((message) => message.type === "turn.start").length, turns + 1);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: join(temporary, "providers-lfm3-audio-mobile.png"), fullPage: true });
+  await page.locator("#end-conversation").click();
+  await page.locator("#open-settings").click();
+  await page.locator("#tab-models").click();
+  await page.locator("#stop-engine").click();
+  await page.locator("#model-provider").selectOption("personaplex");
+  await page.locator("#tab-voice").click();
+  await page.locator("#save-settings").click();
+  await page.waitForFunction(() => document.getElementById("settings-feedback").textContent.includes("saved"));
+
+  assert.deepEqual(errors, []);
+  console.log("Settings QA passed: tabs, credentials, Finder action, downloads/cancel/resume, Load/Eject, profile conflict, mobile layout and LFM3 Space/touch interruption.");
+} finally {
+  await browser.close();
+  await rm(profile, { recursive: true, force: true });
+}
