@@ -4,80 +4,84 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
+      content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1018" />
     <meta
       name="description"
-      content="NoX Voice — your personal voice workspace, powered by your Mac."
-    />
+      content="NoX Voice — your personal voice workspace, powered by your Mac." />
     <title>NoX Voice</title>
   </head>
   <body>
     <div id="app">
-      <header class="header">
-        <a class="brand" href="/" aria-label="NoX Voice home"
-          ><span class="brand-mark" aria-hidden="true">n<span>·</span></span
-          ><span>NoX <strong>Voice</strong></span></a
-        >
+      <header class="header" aria-label="Workspace">
+        <a class="brand" href="/" aria-label="NoX Voice home">
+          <span class="brand-mark" aria-hidden="true">
+            n
+            <span>·</span>
+          </span>
+          <span>
+            NoX
+            <strong>Voice</strong>
+          </span>
+        </a>
         <div class="header-actions" id="signed-in-actions" hidden>
           <button
+            type="button"
             class="engine-badge"
             id="engine-badge"
-            aria-label="Open engine settings"
-          >
-            <span class="status-dot"></span
-            ><span id="header-state">Connecting</span>
+            aria-label="Open engine settings">
+            <span class="status-dot"></span>
+            <span id="header-state">Connecting</span>
           </button>
           <button
+            type="button"
             id="open-downloads"
             class="icon-button downloads-trigger"
             aria-label="Open downloads"
-            title="Downloads"
-          >
-            <span id="downloads-icon"
-              ><svg
+            title="Downloads">
+            <span id="downloads-icon">
+              <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.6"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4" /></svg></span
-            ><span id="download-count" class="download-count" hidden></span>
+                aria-hidden="true">
+                <path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4" />
+              </svg>
+            </span>
+            <span id="download-count" class="download-count" hidden></span>
           </button>
           <button
+            type="button"
             class="icon-button settings-trigger"
             id="open-settings"
             aria-label="Open settings"
-            title="Settings"
-          >
+            title="Settings">
             <svg
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               stroke-width="1.6"
-              aria-hidden="true"
-            >
+              aria-hidden="true">
               <path
-                d="m9.5 3-.8 2.5-2.5.6-2.1 2.7 1.4 2.2-.1 2.5-1.4 2.2 2 2.8 2.6.6 1.5 2.1h3.8l1.4-2.2 2.6-.6 2-2.8-1.4-2.1v-2.6l1.4-2.1-2-2.8-2.6-.6L14.5 3z"
-              />
+                d="m9.5 3-.8 2.5-2.5.6-2.1 2.7 1.4 2.2-.1 2.5-1.4 2.2 2 2.8 2.6.6 1.5 2.1h3.8l1.4-2.2 2.6-.6 2-2.8-1.4-2.1v-2.6l1.4-2.1-2-2.8-2.6-.6L14.5 3z" />
               <circle cx="12" cy="12" r="3.1" />
             </svg>
           </button>
         </div>
-        <span class="header-note" id="header-note"
-          >Your personal voice workspace</span
-        >
+        <span class="header-note" id="header-note">
+          Your personal voice workspace
+        </span>
       </header>
 
       <main class="conversation">
         <div class="model-label">
           <span class="mini-spark" aria-hidden="true">✧</span>
           <span id="active-model-name">NoX Voice</span>
-          <span class="model-divider"></span> LOCAL ENGINE
+          <span class="model-divider"></span>
+          LOCAL ENGINE
         </div>
         <h1 id="conversation-title">A space to talk.</h1>
         <p class="subtitle" id="conversation-subtitle">
@@ -87,62 +91,73 @@
           class="orb-stage"
           id="orb-stage"
           role="img"
-          aria-label="Decorative 3D sphere. It responds only to the assistant's audio."
-        >
+          aria-label="Decorative 3D sphere. It responds only to the assistant's audio.">
           <div class="orb-aura" aria-hidden="true"></div>
           <div class="orb-fallback" aria-hidden="true"></div>
           <canvas id="orb" aria-hidden="true"></canvas>
         </div>
         <div class="assistant-indicator" id="assistant-indicator">
-          <span></span
-          ><span id="assistant-label">Made for natural conversation</span>
+          <span></span>
+          <span id="assistant-label">Made for natural conversation</span>
         </div>
 
         <div id="login-panel" class="login-panel" hidden>
-          <a class="button primary google-button" href="/auth/google/start"
-            ><span class="google-mark" aria-hidden="true">G</span> Continue with
-            Google <span aria-hidden="true">↗</span></a
-          >
+          <a class="button primary google-button" href="/auth/google/start">
+            <span class="google-mark" aria-hidden="true">G</span>
+            Continue with Google
+            <span aria-hidden="true">↗</span>
+          </a>
           <p class="fine-print">
             Access is limited to your authorized account.
           </p>
         </div>
         <div class="conversation-actions" id="conversation-actions" hidden>
-          <button id="start-conversation" class="button primary start-button">
+          <button
+            type="button"
+            id="start-conversation"
+            class="button primary start-button">
             <svg
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               stroke-width="1.7"
-              aria-hidden="true"
-            >
+              aria-hidden="true">
               <rect x="8" y="3" width="8" height="12" rx="4" />
-              <path d="M5 10a7 7 0 0 0 14 0M12 17v4m-4 0h8" /></svg
-            ><span id="start-conversation-label">Start conversation</span>
+              <path d="M5 10a7 7 0 0 0 14 0M12 17v4m-4 0h8" />
+            </svg>
+            <span id="start-conversation-label">Start conversation</span>
           </button>
           <button
+            type="button"
             id="mute"
             class="button secondary"
             hidden
-            aria-pressed="false"
-          >
+            aria-pressed="false">
             Mute
           </button>
-          <button id="end-conversation" class="button end-button" hidden>
-            <span class="stop-square" aria-hidden="true"></span>End conversation
+          <button
+            type="button"
+            id="end-conversation"
+            class="button end-button"
+            hidden>
+            <span class="stop-square" aria-hidden="true"></span>
+            End conversation
           </button>
         </div>
         <section
           id="audio-checks"
           class="audio-checks"
           aria-label="Audio checks"
-          hidden
-        >
+          hidden>
           <p class="field-help">
             Audio checks only: transcribe your speech or read text aloud.
             Conversation and app actions will be added in the next step.
           </p>
-          <button id="hold-to-talk" class="button primary" aria-pressed="false">
+          <button
+            type="button"
+            id="hold-to-talk"
+            class="button primary"
+            aria-pressed="false">
             Press here to speak
           </button>
           <p id="audio-check-state" role="status" aria-live="polite">
@@ -154,70 +169,76 @@
               Your transcript will appear here.
             </p>
           </div>
-          <label class="field-label" for="speech-text"
-            >Text to read aloud</label
-          >
+          <label class="field-label" for="speech-text">
+            Text to read aloud
+          </label>
           <textarea
             id="speech-text"
             rows="3"
             maxlength="2000"
-            placeholder="Enter text to check the selected voice."
-          ></textarea>
+            placeholder="Enter text to check the selected voice."></textarea>
           <div class="engine-buttons">
-            <button id="read-aloud" class="button secondary">Read aloud</button>
-            <button id="stop-speech" class="button secondary">
+            <button type="button" id="read-aloud" class="button secondary">
+              Read aloud
+            </button>
+            <button type="button" id="stop-speech" class="button secondary">
               Stop speech
             </button>
           </div>
         </section>
-        <button id="engine-hint" class="text-button" hidden>
-          Open Settings to load a model <span aria-hidden="true">↗</span>
+        <button type="button" id="engine-hint" class="text-button" hidden>
+          Open Settings to load a model
+          <span aria-hidden="true">↗</span>
         </button>
         <div
           id="notice"
           class="notice"
           role="status"
           aria-live="polite"
-          hidden
-        ></div>
+          hidden></div>
         <div id="conversation-metrics" class="conversation-metrics" hidden>
-          <span><span id="latency">—</span> <small>ms latency</small></span
-          ><span class="metric-divider"></span
-          ><span><span id="rtf">—</span> <small>realtime factor</small></span>
+          <span>
+            <span id="latency">—</span>
+            <small>ms latency</small>
+          </span>
+          <span class="metric-divider"></span>
+          <span>
+            <span id="rtf">—</span>
+            <small>realtime factor</small>
+          </span>
         </div>
       </main>
-      <footer class="footer">
-        <span
-          ><svg
+      <footer class="footer" aria-label="Workspace information">
+        <span>
+          <svg
             viewBox="0 0 16 16"
             fill="none"
             stroke="currentColor"
             stroke-width="1.2"
-            aria-hidden="true"
-          >
+            aria-hidden="true">
             <rect x="3.5" y="7" width="9" height="7" rx="2" />
             <path d="M5 7V4a3 3 0 0 1 6 0v3" />
           </svg>
-          Model runs on your Mac</span
-        ><span>NoX Voice</span>
+          Model runs on your Mac
+        </span>
+        <span>NoX Voice</span>
       </footer>
     </div>
 
     <dialog
       id="settings"
       class="settings-drawer"
-      aria-labelledby="settings-title"
-    >
-      <header class="drawer-header">
+      aria-labelledby="settings-title">
+      <header class="drawer-header" aria-label="Settings">
         <div>
           <span class="eyebrow">YOUR WORKSPACE</span>
           <h2 id="settings-title">Settings</h2>
         </div>
         <button
+          type="button"
           id="close-settings"
           class="icon-button"
-          aria-label="Close settings"
-        >
+          aria-label="Close settings">
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -225,8 +246,7 @@
             stroke-width="1.6"
             stroke-linecap="round"
             stroke-linejoin="round"
-            aria-hidden="true"
-          >
+            aria-hidden="true">
             <path d="m6 6 12 12M18 6 6 18" />
           </svg>
         </button>
@@ -236,16 +256,15 @@
           class="settings-tabs"
           role="tablist"
           aria-label="Settings sections"
-          aria-orientation="vertical"
-        >
+          aria-orientation="vertical">
           <button
+            type="button"
             id="tab-models"
             role="tab"
             aria-controls="panel-models"
             aria-selected="true"
             tabindex="0"
-            data-settings-tab="models"
-          >
+            data-settings-tab="models">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -253,20 +272,21 @@
               stroke-width="1.6"
               stroke-linecap="round"
               stroke-linejoin="round"
-              aria-hidden="true"
-            >
+              aria-hidden="true">
               <rect x="3" y="3" width="18" height="7" rx="2" />
               <rect x="3" y="14" width="18" height="7" rx="2" />
-              <path d="M7 6.5h.01M7 17.5h.01" /></svg
-            ><span>Models</span></button
-          ><button
+              <path d="M7 6.5h.01M7 17.5h.01" />
+            </svg>
+            <span>Models</span>
+          </button>
+          <button
+            type="button"
             id="tab-voice"
             role="tab"
             aria-controls="panel-voice"
             aria-selected="false"
             tabindex="-1"
-            data-settings-tab="voice"
-          >
+            data-settings-tab="voice">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -274,20 +294,20 @@
               stroke-width="1.6"
               stroke-linecap="round"
               stroke-linejoin="round"
-              aria-hidden="true"
-            >
+              aria-hidden="true">
               <path
-                d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"
-              /></svg
-            ><span>Voice</span></button
-          ><button
+                d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8" />
+            </svg>
+            <span>Voice</span>
+          </button>
+          <button
+            type="button"
             id="tab-credentials"
             role="tab"
             aria-controls="panel-credentials"
             aria-selected="false"
             tabindex="-1"
-            data-settings-tab="credentials"
-          >
+            data-settings-tab="credentials">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -295,19 +315,20 @@
               stroke-width="1.6"
               stroke-linecap="round"
               stroke-linejoin="round"
-              aria-hidden="true"
-            >
+              aria-hidden="true">
               <circle cx="8" cy="8" r="5" />
-              <path d="m12 12 9 9m-4-4 3-3m-6 0 3-3" /></svg
-            ><span>Credentials</span></button
-          ><button
+              <path d="m12 12 9 9m-4-4 3-3m-6 0 3-3" />
+            </svg>
+            <span>Credentials</span>
+          </button>
+          <button
+            type="button"
             id="tab-general"
             role="tab"
             aria-controls="panel-general"
             aria-selected="false"
             tabindex="-1"
-            data-settings-tab="general"
-          >
+            data-settings-tab="general">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -315,13 +336,13 @@
               stroke-width="1.6"
               stroke-linecap="round"
               stroke-linejoin="round"
-              aria-hidden="true"
-            >
+              aria-hidden="true">
               <path d="M4 6h16M4 12h16M4 18h16" />
               <circle cx="9" cy="6" r="2" />
               <circle cx="15" cy="12" r="2" />
-              <circle cx="9" cy="18" r="2" /></svg
-            ><span>General</span>
+              <circle cx="9" cy="18" r="2" />
+            </svg>
+            <span>General</span>
           </button>
         </nav>
         <div class="drawer-content">
@@ -329,19 +350,18 @@
             id="panel-models"
             role="tabpanel"
             aria-labelledby="tab-models"
-            class="settings-panel"
-          >
+            class="settings-panel">
             <div class="panel-heading">
               <div>
                 <h3>Voice models</h3>
                 <p>Download once. Load when you are ready to talk.</p>
               </div>
               <button
+                type="button"
                 id="manage-downloads"
                 class="icon-button"
                 aria-label="Open download manager"
-                title="Downloads"
-              >
+                title="Downloads">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -349,24 +369,24 @@
                   stroke-width="1.6"
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  aria-hidden="true"
-                >
+                  aria-hidden="true">
                   <path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4" />
                 </svg>
               </button>
             </div>
-            <label class="field-label" for="model-provider"
-              >Selected model</label
-            ><select id="model-provider" disabled>
+            <label class="field-label" for="model-provider">
+              Selected model
+            </label>
+            <select id="model-provider" disabled>
               <option value="personaplex">PersonaPlex 7B</option>
             </select>
             <p id="model-provider-help" class="field-help" role="status"></p>
             <article class="model-card">
               <div class="section-heading">
                 <h3 id="engine-model-name">PersonaPlex 7B</h3>
-                <span id="model-local-state" class="pill subtle"
-                  >Checking files</span
-                >
+                <span id="model-local-state" class="pill subtle">
+                  Checking files
+                </span>
               </div>
               <p id="model-description" class="section-description"></p>
               <dl class="model-facts">
@@ -375,10 +395,11 @@
                   <dd>
                     <a
                       id="model-source"
+                      href="https://huggingface.co/nvidia/personaplex-7b-v1"
                       target="_blank"
-                      rel="noopener noreferrer"
-                      >Hugging Face ↗</a
-                    >
+                      rel="noopener noreferrer">
+                      Hugging Face ↗
+                    </a>
                   </dd>
                 </div>
                 <div>
@@ -391,7 +412,10 @@
                 </div>
               </dl>
               <div id="model-preparation" class="model-actions">
-                <button id="prepare-model" class="button secondary">
+                <button
+                  type="button"
+                  id="prepare-model"
+                  class="button secondary">
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -399,15 +423,16 @@
                     stroke-width="1.6"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4" /></svg
-                  ><span id="download-label">Download</span></button
-                ><button
+                    aria-hidden="true">
+                    <path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4" />
+                  </svg>
+                  <span id="download-label">Download</span>
+                </button>
+                <button
+                  type="button"
                   id="open-model-folder"
                   class="button secondary"
-                  title="Open this model's folder in Finder on the controller Mac"
-                >
+                  title="Open this model's folder in Finder on the controller Mac">
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -415,12 +440,11 @@
                     stroke-width="1.6"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
+                    aria-hidden="true">
                     <path
-                      d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"
-                    /></svg
-                  >Open folder
+                      d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+                  </svg>
+                  Open folder
                 </button>
               </div>
               <p id="preparation-help" class="field-help" role="status"></p>
@@ -434,8 +458,8 @@
               <div class="engine-summary">
                 <span class="engine-symbol" aria-hidden="true">✧</span>
                 <div>
-                  <strong id="loaded-model-name">No model loaded</strong
-                  ><span id="engine-phase">Checking controller connection</span>
+                  <strong id="loaded-model-name">No model loaded</strong>
+                  <span id="engine-phase">Checking controller connection</span>
                 </div>
                 <span id="engine-memory">—</span>
               </div>
@@ -446,8 +470,7 @@
                 id="engine-error"
                 class="inline-error"
                 role="status"
-                hidden
-              ></p>
+                hidden></p>
               <p class="field-help">
                 Eject releases model memory and keeps your downloaded files.
                 Downloads never load a model automatically.
@@ -459,8 +482,7 @@
             role="tabpanel"
             aria-labelledby="tab-voice"
             class="settings-panel"
-            hidden
-          >
+            hidden>
             <div class="panel-heading">
               <div>
                 <h3>Voice &amp; conversation</h3>
@@ -474,60 +496,56 @@
             <section
               id="persona-settings"
               class="settings-section"
-              aria-labelledby="voice-heading"
-            >
+              aria-labelledby="voice-heading">
               <h3 id="voice-heading">Voice &amp; persona</h3>
               <p class="section-description">
                 Choose how your assistant sounds and responds.
               </p>
-              <label class="field-label" for="voice">Assistant voice</label
-              ><select id="voice"></select>
-              <label class="field-label" for="persona">Persona</label
-              ><textarea
+              <label class="field-label" for="voice">Assistant voice</label>
+              <select id="voice"></select>
+              <label class="field-label" for="persona">Persona</label>
+              <textarea
                 id="persona"
                 rows="4"
                 maxlength="4096"
-                spellcheck="false"
-              >
+                spellcheck="false">
 You are a helpful AI assistant. Be concise and friendly.</textarea>
             </section>
             <section
               id="transcription-settings"
               class="settings-section"
               aria-labelledby="transcription-heading"
-              hidden
-            >
+              hidden>
               <h3 id="transcription-heading">Transcription &amp; speech</h3>
-              <label class="field-label" for="input-language"
-                >Input language</label
-              >
+              <label class="field-label" for="input-language">
+                Input language
+              </label>
               <select id="input-language"></select>
-              <label class="field-label" for="vocabulary"
-                >Vocabulary hints</label
-              >
+              <label class="field-label" for="vocabulary">
+                Vocabulary hints
+              </label>
               <textarea
                 id="vocabulary"
                 rows="3"
                 maxlength="4096"
-                placeholder="Names and terms the transcriber should recognise."
-              ></textarea>
+                placeholder="Names and terms the transcriber should recognise."></textarea>
               <p class="field-help">
                 Hints can improve recognition; they do not guarantee exact
                 spelling.
               </p>
-              <label class="field-label" for="output-language"
-                >Speech language</label
-              >
+              <label class="field-label" for="output-language">
+                Speech language
+              </label>
               <select id="output-language"></select>
               <label class="field-label" for="speech-voice">Speech voice</label>
               <select id="speech-voice"></select>
             </section>
             <section class="settings-section">
               <div id="precision-settings">
-                <label class="field-label" for="quantization"
-                  >Quantization
-                  <span class="field-caption">Engine precision</span></label
-                >
+                <label class="field-label" for="quantization">
+                  Quantization
+                  <span class="field-caption">Engine precision</span>
+                </label>
                 <select id="quantization">
                   <option value="4">4-bit · fastest</option>
                   <option value="5">5-bit</option>
@@ -548,8 +566,7 @@ You are a helpful AI assistant. Be concise and friendly.</textarea>
             role="tabpanel"
             aria-labelledby="tab-credentials"
             class="settings-panel"
-            hidden
-          >
+            hidden>
             <div class="panel-heading">
               <div>
                 <h3>Credentials</h3>
@@ -569,8 +586,7 @@ You are a helpful AI assistant. Be concise and friendly.</textarea>
             role="tabpanel"
             aria-labelledby="tab-general"
             class="settings-panel"
-            hidden
-          >
+            hidden>
             <div class="panel-heading">
               <div>
                 <h3>General</h3>
@@ -579,11 +595,10 @@ You are a helpful AI assistant. Be concise and friendly.</textarea>
             </div>
             <section
               class="settings-section"
-              aria-labelledby="appearance-heading"
-            >
+              aria-labelledby="appearance-heading">
               <h3 id="appearance-heading">Appearance</h3>
-              <label class="field-label" for="theme">Color theme</label
-              ><select id="theme">
+              <label class="field-label" for="theme">Color theme</label>
+              <select id="theme">
                 <option value="system">System</option>
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
@@ -591,38 +606,44 @@ You are a helpful AI assistant. Be concise and friendly.</textarea>
             </section>
             <section
               class="settings-section"
-              aria-labelledby="connection-heading"
-            >
+              aria-labelledby="connection-heading">
               <div class="section-heading">
                 <h3 id="connection-heading">Connection</h3>
                 <span class="pill subtle">mTLS</span>
               </div>
-              <label class="field-label" for="controller-url"
-                >Native controller</label
-              ><input
+              <label class="field-label" for="controller-url">
+                Native controller
+              </label>
+              <input
                 id="controller-url"
+                type="url"
                 readonly
-                placeholder="Configured in deployment"
-              />
+                placeholder="Configured in deployment" />
               <p class="field-help">
                 The address and certificates are configured in your Docker
                 deployment.
               </p>
-              <button id="test-connection" class="button secondary full-width">
-                Test connection <span aria-hidden="true">↗</span>
+              <button
+                type="button"
+                id="test-connection"
+                class="button secondary full-width">
+                Test connection
+                <span aria-hidden="true">↗</span>
               </button>
               <p id="connection-feedback" class="field-help" role="status"></p>
               <div class="detail-row">
-                <span>Controller startup</span
-                ><strong id="autostart-state">—</strong>
+                <span>Controller startup</span>
+                <strong id="autostart-state">—</strong>
               </div>
               <details>
                 <summary>Set up automatic startup</summary>
                 <p class="field-help">
-                  On your Mac, run <code>nox-voice autostart enable</code> to
-                  start the controller after login. Use
-                  <code>nox-voice autostart disable</code> to return to manual
-                  startup. The model starts only when you request it.
+                  On your Mac, run
+                  <code>nox-voice autostart enable</code>
+                  to start the controller after login. Use
+                  <code>nox-voice autostart disable</code>
+                  to return to manual startup. The model starts only when you
+                  request it.
                 </p>
               </details>
               <details id="events-details">
@@ -634,41 +655,52 @@ You are a helpful AI assistant. Be concise and friendly.</textarea>
             </section>
             <section
               class="settings-section account-section"
-              aria-labelledby="account-heading"
-            >
+              aria-labelledby="account-heading">
               <h3 id="account-heading">Account</h3>
               <div class="account-row">
                 <span class="avatar" id="avatar" aria-hidden="true">N</span>
                 <div>
-                  <strong id="account-email">Signed in</strong
-                  ><span>Connected with Google</span>
+                  <strong id="account-email">Signed in</strong>
+                  <span>Connected with Google</span>
                 </div>
               </div>
-              <button id="logout" class="button secondary full-width">
+              <button
+                type="button"
+                id="logout"
+                class="button secondary full-width">
                 Sign out
               </button>
             </section>
           </section>
         </div>
       </div>
-      <footer class="drawer-footer settings-footer">
+      <footer
+        class="drawer-footer settings-footer"
+        aria-label="Settings actions">
         <div>
-          <strong id="model-memory-label" class="memory-status-label"
-            >No model loaded</strong
-          >
+          <strong id="model-memory-label" class="memory-status-label">
+            No model loaded
+          </strong>
           <p id="settings-feedback" class="field-help" role="status"></p>
-          <button id="reload-settings" class="text-button" hidden>
-            Reload saved settings</button
-          ><span class="privacy-note">Conversation audio is not recorded.</span>
+          <button type="button" id="reload-settings" class="text-button" hidden>
+            Reload saved settings
+          </button>
+          <span class="privacy-note">Conversation audio is not recorded.</span>
         </div>
         <div id="model-lifecycle-actions">
           <div class="engine-buttons">
-            <button class="button primary" id="start-engine">Load</button
-            ><button class="button secondary" id="stop-engine">Eject</button
-            ><button class="text-button" id="restart-engine">Reload</button>
+            <button type="button" class="button primary" id="start-engine">
+              Load
+            </button>
+            <button type="button" class="button secondary" id="stop-engine">
+              Eject
+            </button>
+            <button type="button" class="text-button" id="restart-engine">
+              Reload
+            </button>
           </div>
         </div>
-        <button id="save-settings" class="button secondary">
+        <button type="button" id="save-settings" class="button secondary">
           Save settings
         </button>
       </footer>
@@ -676,21 +708,20 @@ You are a helpful AI assistant. Be concise and friendly.</textarea>
     <dialog
       id="downloads"
       class="downloads-dialog"
-      aria-labelledby="downloads-title"
-    >
-      <header class="drawer-header">
+      aria-labelledby="downloads-title">
+      <header class="drawer-header" aria-label="Downloads">
         <div>
           <span class="eyebrow">ON YOUR MAC</span>
           <h2 id="downloads-title">Downloads</h2>
         </div>
         <div class="downloads-header-actions">
           <button
+            type="button"
             id="clear-downloads"
             class="icon-button"
             aria-label="Clear download history"
             title="Clear history"
-            disabled
-          >
+            disabled>
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -698,16 +729,15 @@ You are a helpful AI assistant. Be concise and friendly.</textarea>
               stroke-width="1.6"
               stroke-linecap="round"
               stroke-linejoin="round"
-              aria-hidden="true"
-            >
+              aria-hidden="true">
               <path d="M4 6h16M4 12h9M4 18h9m4-4 5 5m0-5-5 5" />
             </svg>
           </button>
           <button
+            type="button"
             id="close-downloads"
             class="icon-button"
-            aria-label="Close downloads"
-          >
+            aria-label="Close downloads">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -715,8 +745,7 @@ You are a helpful AI assistant. Be concise and friendly.</textarea>
               stroke-width="1.6"
               stroke-linecap="round"
               stroke-linejoin="round"
-              aria-hidden="true"
-            >
+              aria-hidden="true">
               <path d="m6 6 12 12M18 6 6 18" />
             </svg>
           </button>

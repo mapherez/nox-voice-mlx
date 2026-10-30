@@ -29,6 +29,10 @@ npm run build
 npm audit --audit-level=high
 ```
 
+The build validates the complete `index.html` before compiling TypeScript and
+bundling the frontend. Run `npm run lint:html` for HTML validation alone;
+`format:check` checks formatting separately.
+
 The suites cover authentication policy, session expiry/revocation, CSRF, Host and
 Origin validation, concurrent local/domain access, callback origin binding,
 mutual TLS transport, process lifecycle, model-asset validation and continuous

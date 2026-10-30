@@ -68,6 +68,7 @@ const node = <K extends keyof HTMLElementTagNameMap>(
   cls?: string,
 ) => {
   const element = document.createElement(tag);
+  if (element instanceof HTMLButtonElement) element.type = "button";
   if (text !== undefined) element.textContent = text;
   if (cls) element.className = cls;
   return element;
@@ -374,6 +375,10 @@ export class ModelManagement {
         "DELETE",
       );
       if (generation !== this.generation) return;
+      if (!Array.isArray(snapshot.jobs))
+        throw new Error(
+          "The server returned an invalid download history response.",
+        );
       // Ignore an earlier in-flight poll that could restore cleared rows.
       this.generation++;
       this.jobs = snapshot.jobs;

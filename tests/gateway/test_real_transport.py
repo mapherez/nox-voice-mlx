@@ -11,6 +11,7 @@ import pytest
 import uvicorn
 from controller.certificates import create_certificates
 from controller.config import ControllerConfig
+from controller.model_library import ModelLibrary
 from controller.profiles import VoiceConfiguration
 from controller.server import create_app as controller_app
 from controller.supervisor import Supervisor
@@ -43,6 +44,53 @@ def running(app, **options):
         thread.join(timeout=5)
         listener.close()
         assert not thread.is_alive(), "Test server did not stop"
+
+
+def test_clear_download_history_through_gateway_and_real_mtls(config, tmp_path):
+    bundle = create_certificates(tmp_path / "tls", "127.0.0.1")
+    native_config = ControllerConfig(
+        data_dir=tmp_path / "native", weights_dir=tmp_path / "weights"
+    )
+    manager = Supervisor(native_config)
+    model = native_config.weights_dir / "lfm3-audio/models/model.gguf"
+    model.parent.mkdir(parents=True)
+    model.write_bytes(b"model fixture must survive clearing history")
+    manager.library.jobs["finished"] = {
+        "id": "finished", "provider": "lfm3-audio", "state": "completed"
+    }
+    manager.library.jobs["active"] = {
+        "id": "active", "provider": "personaplex", "state": "downloading"
+    }
+    manager.library.save(True)
+    with running(
+        controller_app(native_config, manager),
+        ssl_certfile=str(bundle.parent / "server.crt"),
+        ssl_keyfile=str(bundle.parent / "server.key"),
+        ssl_ca_certs=str(bundle / "ca.crt"),
+        ssl_cert_reqs=ssl.CERT_REQUIRED,
+    ) as controller_port:
+        web_config = replace(
+            config,
+            controller_url=f"https://127.0.0.1:{controller_port}",
+            ca_file=bundle / "ca.crt",
+            cert_file=bundle / "client.crt",
+            key_file=bundle / "client.key",
+        )
+        app = gateway_app(web_config)
+        with TestClient(app, base_url=config.public_url) as client:
+            token = app.state.sessions.create(config.owner_email, "fixture", config.public_url)
+            client.cookies.set(COOKIE, token, domain="voice.test", path="/")
+            csrf = client.get("/api/session").json()["csrfToken"]
+            result = client.delete(
+                "/api/voice/v1/downloads",
+                headers={"Origin": config.public_url, "X-CSRF-Token": csrf},
+            )
+            assert result.status_code == 200
+            assert result.headers["content-type"].startswith("application/json")
+            assert [job["id"] for job in result.json()["jobs"]] == ["active"]
+            assert client.get("/api/voice/v1/downloads").json() == result.json()
+            assert set(ModelLibrary(manager).jobs) == {"active"}
+            assert model.read_bytes() == b"model fixture must survive clearing history"
 
 
 @pytest.mark.parametrize("versioned", [False, True])

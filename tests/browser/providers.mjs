@@ -108,6 +108,20 @@ try {
   await page.locator("#close-downloads").click();
   await page.waitForFunction(() => document.getElementById("model-local-state").textContent === "Verified on disk");
   await page.locator("#manage-downloads").click();
+  // A proxy/static server returning HTML must leave history intact and show
+  // the actual HTTP failure instead of leaking a JSON parser exception.
+  const clearPath = "**/api/voice/v1/downloads";
+  const htmlFailure = async (route) => {
+    if (route.request().method() === "DELETE")
+      await route.fulfill({ status: 405, contentType: "text/html", body: "<!DOCTYPE html><h1>Method not allowed</h1>" });
+    else await route.continue();
+  };
+  await page.route(clearPath, htmlFailure);
+  await page.locator("#clear-downloads").click();
+  await page.waitForFunction(() => document.getElementById("downloads-feedback").textContent.includes("HTTP 405"));
+  assert.equal(await page.locator(".download-job").count(), 1);
+  assert.doesNotMatch(await page.locator("#downloads-feedback").innerText(), /Unexpected token|DOCTYPE/);
+  await page.unroute(clearPath, htmlFailure);
   await page.locator("#clear-downloads").click();
   await page.waitForFunction(() => document.querySelectorAll(".download-job").length === 0);
   assert.deepEqual((await (await page.request.get(`${url}/api/voice/v1/downloads`)).json()).jobs, []);

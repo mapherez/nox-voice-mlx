@@ -1,4 +1,5 @@
 import "./style.css";
+import { ApiError, readApiResponse } from "./api";
 import { ConversationAudio } from "./audio";
 import { LFM3Audio } from "./lfm3-audio";
 import { VoiceOrb } from "./orb";
@@ -147,15 +148,6 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
   orb.themeChanged();
 });
 
-class ApiError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-  }
-}
-
 async function api<T>(
   path: string,
   method = "GET",
@@ -171,7 +163,6 @@ async function api<T>(
     },
     body: payload === undefined ? undefined : JSON.stringify(payload),
   });
-  const data = await response.json();
   if (response.status === 401) {
     audio.stop();
     session = null;
@@ -183,14 +174,7 @@ async function api<T>(
     render();
     throw new Error("Sign in to continue.");
   }
-  if (!response.ok)
-    throw new ApiError(
-      typeof data.error === "string"
-        ? data.error
-        : "The request could not be completed.",
-      response.status,
-    );
-  return data as T;
+  return readApiResponse<T>(response, path, method);
 }
 
 const selectSettingsTab = setupSettingsTabs();
