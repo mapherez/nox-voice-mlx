@@ -62,6 +62,8 @@ The header's download icon opens the **Download Manager**. Its active indicator
 and count distinguish running jobs; an attention icon identifies an unresolved
 failure/interruption. Each job shows total and per-file bytes, transfer speed,
 verification and extraction. **Cancel download** retains safe partial files;
+**Clear downloads** removes finished history entries only, keeping model files
+and active downloads. The cleared history stays cleared after a controller restart.
 **Retry / resume** continues the same immutable artifacts and rechecks integrity.
 If a source cannot serve a byte range, that file restarts explicitly from zero.
 A bad checksum is never installed. Closing Settings or the browser does not stop
@@ -96,6 +98,10 @@ button to speak. Release to get the complete transcript. Enter text under
 **Text to read aloud** to test synthesis. Space/touch during speech interrupts
 playback and starts a new utterance. Space retains normal typing behaviour in
 text fields. The microphone stream is reused until the audio session ends.
+
+Space works even when a main-page button such as Read aloud has focus. While a
+Settings/Downloads dialog is open, its controls retain their normal keyboard
+behaviour. A muted microphone requires explicit Unmute before capture.
 
 The Voice tab provides input language, vocabulary hints, output language and
 female/male voices. Portuguese is selectable; PT-PT speech quality needs actual

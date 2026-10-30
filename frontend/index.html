@@ -143,7 +143,7 @@
             Conversation and app actions will be added in the next step.
           </p>
           <button id="hold-to-talk" class="button primary" aria-pressed="false">
-            Hold Space or press here to speak
+            Press here to speak
           </button>
           <p id="audio-check-state" role="status" aria-live="polite">
             Ready to listen
@@ -683,23 +683,44 @@ You are a helpful AI assistant. Be concise and friendly.</textarea>
           <span class="eyebrow">ON YOUR MAC</span>
           <h2 id="downloads-title">Downloads</h2>
         </div>
-        <button
-          id="close-downloads"
-          class="icon-button"
-          aria-label="Close downloads"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
+        <div class="downloads-header-actions">
+          <button
+            id="clear-downloads"
+            class="icon-button"
+            aria-label="Clear download history"
+            title="Clear history"
+            disabled
           >
-            <path d="m6 6 12 12M18 6 6 18" />
-          </svg>
-        </button>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 6h16M4 12h9M4 18h9m4-4 5 5m0-5-5 5" />
+            </svg>
+          </button>
+          <button
+            id="close-downloads"
+            class="icon-button"
+            aria-label="Close downloads"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
       </header>
       <div class="downloads-content">
         <p class="field-help">
@@ -709,7 +730,7 @@ You are a helpful AI assistant. Be concise and friendly.</textarea>
         <p id="downloads-feedback" class="inline-error" role="status"></p>
         <div id="download-list">
           <p class="downloads-empty">
-            No downloads yet. Choose a model in Settings to get started.
+            No download activity. Manage models in Settings.
           </p>
         </div>
       </div>

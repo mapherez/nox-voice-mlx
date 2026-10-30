@@ -41,6 +41,9 @@ or filesystem browser is served.
 ## Downloads
 
 - `GET /api/voice/v1/downloads` returns `{jobs: [...]}`, oldest first.
+- `DELETE /api/voice/v1/downloads` clears terminal history entries and returns the
+  remaining `{jobs: [...]}`. It persists the cleared list and keeps active jobs
+  and workers still shutting down. It never deletes assets/partials or ejects a model.
 - `POST /api/voice/v1/downloads` accepts exactly `{"provider":"personaplex"}` or
   `{"provider":"lfm3-audio"}` and returns the admitted job with HTTP 202.
 - `POST /api/voice/v1/downloads/{id}/cancel` requests cancellation of its owned worker.

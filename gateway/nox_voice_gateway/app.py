@@ -377,6 +377,10 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
     async def downloads():
         return await forward_voice("GET", "/api/voice/v1/downloads")
 
+    @app.delete("/api/voice/v1/downloads")
+    async def clear_downloads():
+        return await forward_voice("DELETE", "/api/voice/v1/downloads")
+
     @app.post("/api/voice/v1/downloads")
     async def download(request: Request):
         try:

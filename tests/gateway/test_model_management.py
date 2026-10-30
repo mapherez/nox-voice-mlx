@@ -10,6 +10,7 @@ def test_model_management_reads_require_authentication(gateway, path):
 
 @pytest.mark.parametrize("method,path,body", [
     ("post", "/api/voice/v1/downloads", {"provider": "personaplex"}),
+    ("delete", "/api/voice/v1/downloads", None),
     ("post", "/api/voice/v1/providers/personaplex/open-folder", None),
     ("put", "/api/voice/v1/credentials/huggingface", {"secret": "hf_fixtureToken123"}),
     ("delete", "/api/voice/v1/credentials/huggingface", None),

@@ -221,7 +221,10 @@ class Preview(SimpleHTTPRequestHandler):
         self.json(SETTINGS)
 
     def do_DELETE(self):
-        if self.path == "/api/voice/v1/credentials/huggingface":
+        if self.path == "/api/voice/v1/downloads":
+            JOBS[:] = [job for job in JOBS if job["state"] in {"queued", "resolving", "downloading", "verifying", "extracting", "cancelling"}]
+            self.json({"jobs": JOBS})
+        elif self.path == "/api/voice/v1/credentials/huggingface":
             CREDENTIAL.update(configured=False, test=None)
             self.json({"services": [CREDENTIAL]})
         else:

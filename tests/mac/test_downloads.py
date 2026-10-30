@@ -14,6 +14,50 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 
+def test_clear_history_persists_and_preserves_files_active_jobs_and_winding_down_workers(tmp_path):
+    config = ControllerConfig(data_dir=tmp_path / "data", weights_dir=tmp_path / "weights")
+    library = ModelLibrary(SimpleNamespace(config=config))
+    model = config.weights_dir / "lfm3-audio/models/model.gguf"
+    model.parent.mkdir(parents=True)
+    model.write_bytes(b"downloaded model")
+    partial = model.with_suffix(".part")
+    partial.write_bytes(b"pending download")
+    library.jobs = {str(index): {"id": str(index), "provider": "lfm3-audio", "state": state}
+        for index, state in enumerate(["completed", "failed", "cancelled", "interrupted", "downloading", "cancelling", "cancelled"])}
+    library.tasks["6"] = object()  # Its cancelled worker is still releasing resources.
+    assert {job["id"] for job in library.clear_finished()["jobs"]} == {"4", "5", "6"}
+    assert model.read_bytes() == b"downloaded model" and partial.read_bytes() == b"pending download"
+    assert set(ModelLibrary(SimpleNamespace(config=config)).jobs) == {"4", "5", "6"}
+
+
+def test_clear_history_reports_persistence_errors_without_losing_memory_state(tmp_path, monkeypatch):
+    library = ModelLibrary(SimpleNamespace(config=ControllerConfig(data_dir=tmp_path)))
+    library.jobs["finished"] = {"id": "finished", "provider": "personaplex", "state": "completed"}
+
+    def cannot_save(*_):
+        raise OSError("fixture disk error")
+
+    monkeypatch.setattr(library, "save", cannot_save)
+    with pytest.raises(HTTPException) as error:
+        library.clear_finished()
+    assert error.value.status_code == 503 and "finished" in library.jobs
+
+
+def test_clear_downloads_api_removes_entries_without_ejecting_or_touching_assets(tmp_path):
+    config = ControllerConfig(data_dir=tmp_path, weights_dir=tmp_path / "weights")
+    manager = Supervisor(config)
+    manager.state, manager.running_provider = "ready", "personaplex"
+    model = config.weights_dir / "personaplex/model.safetensors"
+    model.parent.mkdir(parents=True)
+    model.write_bytes(b"keep model")
+    manager.library.jobs["completed"] = {"id": "completed", "provider": "personaplex", "state": "completed"}
+    with TestClient(create_app(config, manager)) as client:
+        assert client.delete("/api/voice/v1/downloads").json() == {"jobs": []}
+        assert manager.state == "ready" and manager.running_provider == "personaplex"
+        assert model.read_bytes() == b"keep model"
+        assert client.get("/api/voice/v1/downloads").json() == {"jobs": []}
+
+
 class Response(io.BytesIO):
     def __init__(self, data, status=200, headers=None):
         super().__init__(data)

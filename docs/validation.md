@@ -60,6 +60,31 @@ Load/Eject, mobile layout and LFM3 keyboard/touch capture/interruption with a
 fake microphone. Screenshots cover desktop and mobile. It does not establish
 Safari or physical mobile-device compatibility.
 
+### Reported deployment validation
+
+On October 30, 2026 the user confirmed real installation checks: model downloads
+and loading, microphone transcription, LFM3 reading supplied text, speech
+interruption, Finder opening the model folder on the controller Mac, memory
+allocation/release on Load/Eject and controller restart, independent saved
+profiles, downloads continuing while their window is closed, and mobile audio
+and interruption. Device/browser versions and numerical latency were not recorded.
+
+The user also confirmed that another device sees the active-conversation notice
+while a phone owns the conversation, validating the visible single-session guard.
+Phone/tablet capture and interruption instructions use touch wording; desktop
+instructions can also mention Space. Responsive QA covers both input layouts.
+
+The report identified a keyboard-focus regression: Space on a focused Read aloud
+button restarted speech. Browser regression QA now exercises that exact focus,
+repeated keydown and keyup, preserving Space typing and modal keyboard controls.
+The requested Clear downloads action is tested for retaining model files and
+active work, persisting cleared history, and keeping its global indicator accurate.
+
+PersonaPlex voice conversation and interruption by speaking were confirmed. The
+user also observed that it could continue its previous answer after a spoken
+"stop". A spoken phrase is model input, not a deterministic engine stop command;
+this observation is retained without claiming its cause has been diagnosed.
+
 ### Opt-in live LFM3 check
 
 From the repository root, explicitly supply the existing experiment directory:

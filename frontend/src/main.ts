@@ -201,6 +201,8 @@ const management = new ModelManagement(
   () => render(),
   selectSettingsTab,
 );
+const touchLayout = matchMedia("(pointer: coarse), (max-width: 1024px)");
+touchLayout.addEventListener("change", () => render());
 
 function render(): void {
   const current = savedProvider();
@@ -377,6 +379,12 @@ function render(): void {
         saving,
     );
   management.render();
+  text(
+    "hold-to-talk",
+    touchLayout.matches
+      ? "Press here to speak"
+      : "Hold Space or press here to speak",
+  );
   disabled("hold-to-talk", !lfmAudio.active || lfmAudio.muted);
   element("hold-to-talk").setAttribute(
     "aria-pressed",
@@ -390,7 +398,9 @@ function render(): void {
       ready: "Ready to listen",
       recording: "Listening — release to transcribe",
       transcribing: "Transcribing…",
-      speaking: "Reading aloud — hold Space to interrupt",
+      speaking: touchLayout.matches
+        ? "Reading aloud — press and hold the button to interrupt"
+        : "Reading aloud — hold Space to interrupt",
     }[lfmAudio.activity],
   );
   disabled(
@@ -412,7 +422,9 @@ function render(): void {
     text(
       "conversation-subtitle",
       checkingAudio
-        ? "Hold Space or the button below to speak. Release to transcribe."
+        ? touchLayout.matches
+          ? "Press and hold the button below to speak. Release to transcribe."
+          : "Hold Space or the button below to speak. Release to transcribe."
         : "Speak naturally. You can interrupt at any time.",
     );
   } else if (audio.busy) {
@@ -776,34 +788,58 @@ for (const kind of [
   "lostpointercapture",
 ] as const)
   hold.addEventListener(kind, releasePointer);
-document.addEventListener("keydown", (event) => {
-  if (
-    event.code !== "Space" ||
-    event.repeat ||
-    drawer.open ||
-    event.ctrlKey ||
-    event.metaKey ||
-    event.altKey ||
-    !lfmAudio.active
-  )
-    return;
-  const target = event.target as HTMLElement;
-  if (
-    target.closest(
-      "input, textarea, select, [contenteditable], a, button:not(#hold-to-talk)",
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (event.code !== "Space") return;
+    // Consume repeats too, so holding Space cannot reactivate a focused button
+    // or scroll the page. Capture phase precedes native button activation.
+    if (spaceHeld) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (
+      event.repeat ||
+      event.isComposing ||
+      document.querySelector("dialog[open]") ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      !lfmAudio.active
     )
-  )
-    return;
-  event.preventDefault();
-  spaceHeld = true;
-  lfmAudio.beginHold();
-});
-document.addEventListener("keyup", (event) => {
-  if (event.code !== "Space" || !spaceHeld) return;
-  event.preventDefault();
-  spaceHeld = false;
-  if (pointer === null) lfmAudio.endHold();
-});
+      return;
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest(
+        "input, textarea, select, [contenteditable], [role=textbox], [role=combobox]",
+      )
+    )
+      return;
+    event.preventDefault();
+    event.stopPropagation();
+    spaceHeld = true;
+    if (lfmAudio.muted) {
+      lfmAudio.interruptSpeech();
+      notify("Unmute the microphone to speak.");
+    } else {
+      lfmAudio.beginHold();
+    }
+  },
+  { capture: true },
+);
+document.addEventListener(
+  "keyup",
+  (event) => {
+    if (event.code !== "Space" || !spaceHeld) return;
+    event.preventDefault();
+    event.stopPropagation();
+    spaceHeld = false;
+    if (pointer === null) lfmAudio.endHold();
+  },
+  { capture: true },
+);
 window.addEventListener("blur", () => {
   pointer = null;
   spaceHeld = false;

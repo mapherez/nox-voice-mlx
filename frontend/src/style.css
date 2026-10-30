@@ -1464,3 +1464,8 @@ summary:hover {
   color: var(--text);
   margin-bottom: 4px;
 }
+.downloads-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

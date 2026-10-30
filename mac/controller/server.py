@@ -101,6 +101,11 @@ def create_app(config: ControllerConfig, supervisor: Supervisor | None = None) -
     async def downloads():
         return manager.library.snapshot()
 
+    @app.delete("/api/voice/v1/downloads")
+    async def clear_downloads():
+        async with manager.lock:
+            return manager.library.clear_finished()
+
     @app.post("/api/voice/v1/downloads", status_code=202)
     async def download(value: DownloadRequest):
         async with manager.lock:

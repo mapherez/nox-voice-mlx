@@ -1,6 +1,6 @@
 # NoX Voice — multi-model engine contract
 
-Decision baseline: **October 29, 2026**. Design revision: **3**.
+Decision baseline: **October 29, 2026**. Design revision: **4**.
 Asset layout amendment: **October 30, 2026**.
 
 Status: **agreed implementation target, partially implemented; see section 14**.
@@ -167,6 +167,12 @@ An on-screen hold control provides the same behavior on touch devices. While
 speaking a response, Space down first stops scheduled playback immediately,
 cancels that speech generation best-effort, then captures the new utterance.
 This applies to ordinary conversation, progress notices and MCP confirmations.
+
+During a connected LFM3 audio session, Space owns push-to-talk even when an
+ordinary button such as Read aloud has focus. Suppress that button's native
+Space activation on press/repeat/release. Text entry and open Settings/Downloads
+dialogs retain normal keyboard behaviour. Space never unmutes the microphone
+implicitly; muted capture stays muted.
 
 The model transcribes the complete utterance faithfully. It does not choose MCP
 tools, simplify compound instructions, or reinterpret quoted titles beforehand.
@@ -545,6 +551,11 @@ download. Controller shutdown stops owned jobs, retains safe partial downloads
 and never automatically resumes them or loads inference after restart. Resume
 is explicit, bound to immutable artifact identity and verified before install.
 
+**Clear downloads** clears terminal history entries only, persists that change,
+and updates the global indicator. It never deletes model/partial files, ejects a
+model, or cancels active jobs. Jobs whose workers are still shutting down remain
+visible until they have released their resources.
+
 Credentials use a service registry, initially `huggingface`. Status reads expose
 configured/tested state only; explicit writes store secrets privately on the
 native host, separately from settings. No secret is returned, logged, added to
@@ -559,7 +570,7 @@ of a graphical login produces a clear error. Folder actions require an explicit
 authenticated user request.
 
 Additive APIs: `GET /api/voice/v1/models`, `POST /api/voice/v1/providers/{id}/open-folder`,
-`GET|POST /api/voice/v1/downloads`, `POST /api/voice/v1/downloads/{id}/{cancel|retry}`,
+`GET|POST|DELETE /api/voice/v1/downloads`, `POST /api/voice/v1/downloads/{id}/{cancel|retry}`,
 `GET /api/voice/v1/credentials`, `PUT|DELETE /api/voice/v1/credentials/{service}`,
 `POST /api/voice/v1/credentials/{service}/test`, and explicit engine load/eject
 actions. All are relayed through authenticated web gateway and mTLS. Validate

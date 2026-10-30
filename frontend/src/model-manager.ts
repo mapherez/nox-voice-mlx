@@ -182,6 +182,7 @@ export class ModelManagement {
   services: Credential[] = [];
   private generation = 0;
   private refreshing = false;
+  private clearingDownloads = false;
   private credentialBusy = new Set<string>();
   private lastJobs = "";
   private expandedJobs = new Map<string, boolean>();
@@ -199,6 +200,10 @@ export class ModelManagement {
       byId(id).addEventListener("click", () => this.openDownloads());
     byId("close-downloads").addEventListener("click", () =>
       this.dialog.close(),
+    );
+    byId("clear-downloads").addEventListener(
+      "click",
+      () => void this.clearDownloads(),
     );
     this.dialog.addEventListener("close", () => this.returnFocus?.focus());
     byId("prepare-model").addEventListener(
@@ -253,6 +258,10 @@ export class ModelManagement {
   }
 
   render(): void {
+    byId<HTMLButtonElement>("clear-downloads").disabled =
+      this.clearingDownloads ||
+      !this.reachable() ||
+      !this.jobs.some((job) => !active.has(job.state));
     const indicator = downloadIndicator(this.jobs);
     const trigger = byId("open-downloads");
     trigger.dataset.state = indicator.state;
@@ -353,6 +362,34 @@ export class ModelManagement {
     void this.refresh();
   }
 
+  private async clearDownloads(): Promise<void> {
+    if (this.clearingDownloads) return;
+    this.clearingDownloads = true;
+    const generation = this.generation;
+    byId("downloads-feedback").textContent = "";
+    this.render();
+    try {
+      const snapshot = await this.api<{ jobs: DownloadJob[] }>(
+        `${prefix}/downloads`,
+        "DELETE",
+      );
+      if (generation !== this.generation) return;
+      // Ignore an earlier in-flight poll that could restore cleared rows.
+      this.generation++;
+      this.jobs = snapshot.jobs;
+      const retained = new Set(this.jobs.map((job) => job.id));
+      for (const key of this.expandedJobs.keys())
+        if (!retained.has(key)) this.expandedJobs.delete(key);
+      this.changed();
+    } catch (error) {
+      if (generation === this.generation)
+        byId("downloads-feedback").textContent = (error as Error).message;
+    } finally {
+      this.clearingDownloads = false;
+      this.render();
+    }
+  }
+
   private async startDownload(): Promise<void> {
     const model = this.selectedModel();
     if (!model) return;
@@ -403,7 +440,7 @@ export class ModelManagement {
       list.append(
         node(
           "p",
-          "No downloads yet. Choose a model in Settings to get started.",
+          "No download activity. Manage models in Settings.",
           "downloads-empty",
         ),
       );

@@ -94,12 +94,26 @@ try {
   await page.locator("#prepare-model").click();
   await page.locator("#downloads").waitFor({ state: "visible" });
   assert.equal(await page.locator("#open-downloads").getAttribute("data-state"), "active");
+  assert.equal(await page.locator("#clear-downloads").isDisabled(), true);
   await page.screenshot({ path: join(temporary, "downloads-active-desktop.png"), fullPage: true });
   await page.getByRole("button", { name: "Cancel download" }).first().click();
   await page.getByRole("button", { name: "Retry / resume" }).first().waitFor();
   await page.getByRole("button", { name: "Retry / resume" }).first().click();
+  await page.locator("#clear-downloads").click();
+  await page.waitForFunction(() => document.querySelectorAll(".download-job").length === 1);
+  const remaining = await (await page.request.get(`${url}/api/voice/v1/downloads`)).json();
+  assert.equal(remaining.jobs.length, 1);
+  assert.equal(remaining.jobs[0].state, "downloading");
+  assert.equal(await page.locator("#open-downloads").getAttribute("data-state"), "active");
   await page.locator("#close-downloads").click();
   await page.waitForFunction(() => document.getElementById("model-local-state").textContent === "Verified on disk");
+  await page.locator("#manage-downloads").click();
+  await page.locator("#clear-downloads").click();
+  await page.waitForFunction(() => document.querySelectorAll(".download-job").length === 0);
+  assert.deepEqual((await (await page.request.get(`${url}/api/voice/v1/downloads`)).json()).jobs, []);
+  assert.equal((await (await page.request.get(`${url}/api/voice/v1/models`)).json()).models.find((model) => model.id === "lfm3-audio").localState, "verified");
+  assert.equal(await page.locator("#open-downloads").getAttribute("data-state"), "idle");
+  await page.locator("#close-downloads").click();
   assert.equal((await (await page.request.get(`${url}/api/engine/status`)).json()).state, "stopped");
   await page.locator("#tab-voice").click();
   assert.equal(await page.locator("#precision-settings").isVisible(), false);
@@ -124,6 +138,13 @@ try {
   assert.equal(await page.locator("#start-conversation-label").innerText(), "Check audio");
   await page.locator("#start-conversation").click();
   await page.locator("#audio-checks").waitFor({ state: "visible" });
+  // Compact phones/tablets get touch wording, without a keyboard assumption.
+  assert.equal(await page.locator("#hold-to-talk").textContent(), "Press here to speak");
+  assert.doesNotMatch(await page.locator("#conversation-subtitle").innerText(), /Space/);
+  const cdp = await browser.newCDPSession(page);
+  await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: false });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForFunction(() => document.getElementById("hold-to-talk").textContent === "Hold Space or press here to speak");
   await page.locator("#hold-to-talk").focus();
   await page.keyboard.down("Space");
   await page.waitForFunction(() => document.getElementById("hold-to-talk").getAttribute("aria-pressed") === "true");
@@ -137,20 +158,37 @@ try {
   await page.locator("#speech-text").fill("An audio check without executing any tools.");
   await page.locator("#read-aloud").click();
   await page.waitForFunction(() => !document.getElementById("stop-speech").disabled);
-  await page.locator("#hold-to-talk").focus();
+  // Keep focus where a real click leaves it: Space must interrupt/capture,
+  // never reactivate Read aloud on keydown, repeat or keyup.
+  assert.equal(await page.evaluate(() => document.activeElement.id), "read-aloud");
+  const speechRequests = audioMessages.filter((message) => message.type === "speech.request").length;
+  const turnsBeforeInterrupt = audioMessages.filter((message) => message.type === "turn.start").length;
   await page.keyboard.down("Space");
+  await page.waitForFunction(() => document.getElementById("hold-to-talk").getAttribute("aria-pressed") === "true");
+  await page.keyboard.down("Space"); // Repeat while held must not create a second turn.
   await page.waitForTimeout(150);
   await page.keyboard.up("Space");
   await page.waitForFunction(() => document.getElementById("audio-check-state").textContent === "Ready to listen");
   assert.ok(audioMessages.some((message) => message.type === "speech.interrupt"));
+  assert.equal(audioMessages.filter((message) => message.type === "speech.request").length, speechRequests);
+  assert.equal(audioMessages.filter((message) => message.type === "turn.start").length, turnsBeforeInterrupt + 1);
   // Text fields retain normal typing: Space must not start another audio turn.
   const turns = audioMessages.filter((message) => message.type === "turn.start").length;
   await page.locator("#speech-text").focus();
+  const textBeforeSpace = await page.locator("#speech-text").inputValue();
   await page.keyboard.press("Space");
+  assert.equal(await page.locator("#speech-text").inputValue(), textBeforeSpace + " ");
+  assert.equal(audioMessages.filter((message) => message.type === "turn.start").length, turns);
+  // Modal controls retain normal Space activation while audio is connected.
+  await page.locator("#open-downloads").click();
+  await page.locator("#close-downloads").focus();
+  await page.keyboard.press("Space");
+  await page.locator("#downloads").waitFor({ state: "hidden" });
   assert.equal(audioMessages.filter((message) => message.type === "turn.start").length, turns);
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => document.getElementById("hold-to-talk").textContent === "Press here to speak");
   const rect = await page.locator("#hold-to-talk").boundingBox();
-  const cdp = await browser.newCDPSession(page);
+  await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
   const touchPoints = [{ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }];
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints });
   await page.waitForTimeout(200);
@@ -158,7 +196,16 @@ try {
   await page.waitForFunction(() => document.getElementById("audio-check-state").textContent === "Ready to listen");
   assert.equal(audioMessages.filter((message) => message.type === "turn.start").length, turns + 1);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.locator("#read-aloud").click();
+  await page.waitForFunction(() => document.getElementById("audio-check-state").textContent.includes("Reading aloud"));
+  assert.doesNotMatch(await page.locator("#audio-check-state").innerText(), /Space/);
+  await page.locator("#stop-speech").click();
   await page.screenshot({ path: join(temporary, "providers-lfm3-audio-mobile.png"), fullPage: true });
+  // Landscape tablets can be wider than the compact breakpoint and still use touch.
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await page.waitForFunction(() => matchMedia("(pointer: coarse)").matches);
+  assert.equal(await page.locator("#hold-to-talk").textContent(), "Press here to speak");
+  assert.doesNotMatch(await page.locator("#conversation-subtitle").innerText(), /Space/);
   await page.locator("#end-conversation").click();
   await page.locator("#open-settings").click();
   await page.locator("#tab-models").click();

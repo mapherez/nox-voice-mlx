@@ -45,6 +45,19 @@ class ModelLibrary:
     def snapshot(self):
         return {"jobs": list(self.jobs.values())}
 
+    def clear_finished(self):
+        remaining = {key: job for key, job in self.jobs.items()
+            if job["state"] in ACTIVE or key in self.tasks}
+        if len(remaining) != len(self.jobs):
+            previous = self.jobs
+            self.jobs = remaining
+            try:
+                self.save(True)
+            except OSError:
+                self.jobs = previous
+                raise HTTPException(503, "Could not clear download history on the Mac. Check free space and folder permissions, then retry.") from None
+        return self.snapshot()
+
     def busy(self, provider_id):
         return any(job["provider"] == provider_id and job["state"] in ACTIVE for job in self.jobs.values())
 
