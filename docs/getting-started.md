@@ -263,17 +263,18 @@ changing anything on the Mac.
    downloads continue on the Mac. Use **Cancel download** or **Retry / resume**
    there when needed. No manual file downloads are required.
 7. Click **Load** once the files are available. Wait for **Model loaded**.
-8. Close Settings and click **Start conversation** for PersonaPlex, or **Check
-   audio** for LFM3. Allow microphone access when prompted.
+8. Close Settings and click **Start conversation** for PersonaPlex, or **Connect
+   LFM3** for LFM3. Allow microphone access when prompted.
 
 **Download** saves files; **Load** loads the model into memory; **Eject** releases
 that memory while keeping the downloaded files. Selecting a model never starts a
 download or inference. **Open folder** opens Finder on the controller Mac, even
 when the browser is on another device; a graphical login on that Mac is required.
 
-PersonaPlex supports continuous voice conversation. LFM3 currently provides
-push-to-talk transcription and reading supplied text aloud; executor/MCP support
-is a separate planned stage. The sphere reacts only to assistant playback.
+PersonaPlex supports continuous voice conversation. LFM3 provides push-to-talk
+transcription and reading supplied text aloud. For LLM answers and MCP actions,
+configure and enable [Executor & MCP](executor.md). The sphere reacts only to
+assistant playback.
 **End conversation** releases the microphone. **Ctrl+C in the Mac terminal**
 stops the controller, its model worker and active downloads. Interrupted downloads
 can be resumed explicitly after restarting; models never load automatically.

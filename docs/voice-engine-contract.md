@@ -428,8 +428,8 @@ PUT requires the complete document with the expected revision and both profiles;
 409 rejects a stale revision or a busy engine, 422 rejects invalid settings, and
 503 rejects selecting an unimplemented provider without stopping the active one.
 Actual changes increment the revision; saving unchanged values does not.
-LFM3 provides versioned audio-check sessions today. Executor task endpoints and
-activity events are implemented in stages 3–4.
+LFM3 provides versioned audio sessions and optional stage-3 executor admission,
+task APIs and activity events. Full background presentation follows in stage 4.
 
 The namespace provides:
 
@@ -587,8 +587,8 @@ lifecycle management. Include development checks, tests, Docker build, CI and
 documentation in the migration.
 
 The [stage 2.2 implementation plan](implementation-stage-2.2.md) is approved and
-the migration is implemented. Automated component, lifecycle, browser and
-container checks pass; real deployment acceptance remains pending. This stage
+the migration is complete. Automated component, lifecycle, browser and
+container checks pass; the user confirmed real deployment parity. This stage
 follows 2.1 and precedes stage 3. Stages 3–6 retain their scope and order.
 Completion requires functional and visual parity acceptance, with real
 deployment findings reported separately in [validation](validation.md).
@@ -600,8 +600,8 @@ Current implementation status:
 | 1. Provider boundary and versioned settings | Implemented: provider-defined worker module/bootstrap/metadata, independent typed profiles, revision conflicts, authenticated API relay and catalogue-aware controls; existing PersonaPlex audio path retained |
 | 2. LFM3 audio in the main webapp | Implemented: explicit pinned preparation/import, private owned runtime, complete-turn ASR, audio-only TTS, Space/touch interruption and independent audio-check sessions in the existing frontend |
 | 2.1. Model management and Settings | Implemented: both-provider downloads, bounded Download Manager, explicit Load/Eject, private service credentials, native Finder action and responsive Settings tabs; see validation for test coverage |
-| 2.2. React, TypeScript and Vite+ | Implemented: modular React UI, typed feature state/services, Vite+ checks/tests/build, CI and amd64/arm64 container validation; real deployment parity acceptance pending before stage 3 |
-| 3. Generic executor and task store | Pending; the isolated demo's MCP/LLM paths remain independent |
+| 2.2. React, TypeScript and Vite+ | Complete: modular React UI, typed services, Vite+ toolchain and two-platform delivery checks; user confirmed real deployment parity, including Clear |
+| 3. Generic executor and task store | Implemented with automated acceptance: native LM Studio-compatible executor, multiple discovered direct MCP catalogues, validated dependent calls, scoped bindings/receipts, task APIs/activity and operational Settings; actual LLM/MCP/model acceptance pending. See [stage 3](implementation-stage-3.md) |
 | 4. Background tasks and presentation | Pending |
 | 5. Full customization and compatibility | Pending beyond PersonaPlex controls, LFM3 input/output language, vocabulary and voice controls, and profile/API compatibility delivered in stages 1–2 |
 | 6. Suite acceptance | Pending; Gateway integration follows the Suite contract and actual service availability |
@@ -615,10 +615,12 @@ microphone cleanup. An opt-in test with real LFM3 weights exercises ASR, TTS,
 speech interruption, reuse of the single model slot and owned-process shutdown.
 See [validation](validation.md) for observed results and their limits.
 
-The main LFM3 interface is deliberately labelled **audio checks** at this stage:
-speech is transcribed literally and a supplied text can be synthesized. No main
-app executor or MCP task is dispatched. This is the audio layer for stage 3,
-not a replacement architecture or a claim that its conversation flow is done.
+LFM3 retains literal audio checks with execution disabled. Enabling the saved
+executor profile connects completed transcripts to the main-app task engine;
+ordinary answers and MCP actions use that same path. Current-turn concise speech
+is presented once while idle. Full progress/completion notification queues and
+policies remain stage 4; full provider customization and Suite acceptance retain
+stages 5 and 6. The isolated experiment is not the main executor implementation.
 
 These are implementation stages for the full contract, not different architectures
 or per-product pilots. Keep the working PersonaPlex path throughout.

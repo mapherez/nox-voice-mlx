@@ -1,13 +1,26 @@
-import { useRef, type KeyboardEvent } from "react";
+import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { useRuntime, useSnapshot } from "../../app/workspace";
 import { useMediaQuery } from "../../components/ui/use-media-query";
 import type { SettingsTab } from "../session/types";
-const tabs: SettingsTab[] = ["models", "voice", "credentials", "general"];
+const tabs: SettingsTab[] = [
+  "models",
+  "voice",
+  "credentials",
+  "general",
+  "executor",
+];
 export function SettingsTabs() {
   const runtime = useRuntime(),
     workspace = useSnapshot(runtime);
   const mobile = useMediaQuery("(max-width: 680px)");
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  useLayoutEffect(() => {
+    if (mobile)
+      buttons.current[tabs.indexOf(workspace.tab)]?.scrollIntoView?.({
+        block: "nearest",
+        inline: "nearest",
+      });
+  }, [mobile, workspace.tab]);
   function navigate(event: KeyboardEvent, index: number) {
     let next = index;
     if (["ArrowRight", "ArrowDown"].includes(event.key))
@@ -144,6 +157,31 @@ export function SettingsTabs() {
         </svg>{" "}
         <span>General</span>{" "}
       </button>{" "}
+      <button
+        type="button"
+        id="tab-executor"
+        role="tab"
+        aria-controls="panel-executor"
+        aria-selected={workspace.tab === "executor"}
+        tabIndex={workspace.tab === "executor" ? 0 : -1}
+        data-settings-tab="executor"
+        onClick={() => runtime.selectTab("executor")}
+        onKeyDown={(event) => navigate(event, 4)}
+        ref={(node) => {
+          buttons.current[4] = node;
+        }}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true">
+          <path d="m8 4-6 8 6 8m8-16 6 8-6 8m-3-16-2 16" />
+        </svg>
+        <span>Executor &amp; MCP</span>
+      </button>
     </div>
   );
 }

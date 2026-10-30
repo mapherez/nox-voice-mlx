@@ -24,8 +24,9 @@ export function AudioChecks() {
       {" "}
       <p className="field-help">
         {" "}
-        Audio checks only: transcribe your speech or read text aloud.
-        Conversation and app actions will be added in the next step.{" "}
+        {audio.executorEnabled
+          ? "Speak to get an answer or run a connected tool. Results appear in Activity."
+          : "Transcribe your speech or read text aloud. Enable answers and actions in Executor & MCP settings."}
       </p>{" "}
       <button
         type="button"

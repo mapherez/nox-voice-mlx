@@ -19,6 +19,7 @@ export type ProviderDescription = {
   capabilities: {
     legacyAudio: boolean;
     audioChecks?: boolean;
+    executor?: boolean;
     pushToTalk?: boolean;
     assetPreparation?: boolean;
   };

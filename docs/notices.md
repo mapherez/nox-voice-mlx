@@ -12,6 +12,9 @@
   emitted as `assets/third-party-licenses.txt` in the frontend build.
 - Vite+ and the React build/test tools are development dependencies. Their
   executables and Node.js are not included in the deployed Python runtime.
+- The native executor uses the MIT-licensed `jsonschema` implementation and its
+  packaged referencing/schema dependencies. These are installed by the native
+  controller lockfile; the web gateway does not install the executor stack.
 - Inter Variable is distributed by `@fontsource-variable/inter` under SIL OFL
   1.1; the font and license are included with that dependency. Fonts are served
   locally, not requested from a font CDN at runtime.

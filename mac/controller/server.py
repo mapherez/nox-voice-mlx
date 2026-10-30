@@ -5,14 +5,17 @@ import json
 from contextlib import asynccontextmanager, suppress
 
 import anyio
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ConfigDict
 from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed, InvalidHandshake
 
 from .config import ControllerConfig, VoiceSettings
-from .credentials import SERVICES, CredentialWrite
+from .credentials import CredentialWrite
+from .executor.bridge import TaskBridge
+from .executor.config import ExecutorUpdate
+from .executor.protocol import ExecutionError
 from .profiles import ConfigurationUpdate, ProviderId, VoiceConfiguration
 from .providers import provider
 from .supervisor import Supervisor
@@ -125,7 +128,7 @@ def create_app(config: ControllerConfig, supervisor: Supervisor | None = None) -
         return manager.library.credentials.describe()
 
     def credential_service(service):
-        if service not in SERVICES:
+        if service not in manager.library.credentials.services:
             raise HTTPException(404, "Unknown credential service.")
         return manager.library.credentials
 
@@ -134,7 +137,7 @@ def create_app(config: ControllerConfig, supervisor: Supervisor | None = None) -
         try:
             return credential_service(service).save(service, value.secret.get_secret_value())
         except ValueError:
-            raise HTTPException(422, "Enter a valid Hugging Face token beginning with hf_.") from None
+            raise HTTPException(422, "Enter a valid access token for this service.") from None
 
     @app.delete("/api/voice/v1/credentials/{service}")
     async def remove_credential(service: str):
@@ -143,6 +146,49 @@ def create_app(config: ControllerConfig, supervisor: Supervisor | None = None) -
     @app.post("/api/voice/v1/credentials/{service}/test")
     async def test_credential(service: str):
         return await asyncio.to_thread(credential_service(service).test, service)
+
+    @app.get("/api/voice/v1/executor/settings")
+    async def executor_settings():
+        return manager.executor.settings.value.model_dump()
+
+    @app.put("/api/voice/v1/executor/settings")
+    async def save_executor(value: ExecutorUpdate):
+        async with manager.lock:
+            return await manager.executor.save(value)
+
+    @app.get("/api/voice/v1/executor/connections")
+    async def executor_connections():
+        return manager.executor.catalogue()
+
+    @app.post("/api/voice/v1/executor/test")
+    async def test_executor():
+        return await manager.executor.test_llm()
+
+    @app.post("/api/voice/v1/executor/connections/{connection_id}/{action}")
+    async def mcp_connection(connection_id: str, action: str):
+        if action not in {"connect", "disconnect", "refresh", "test"}:
+            raise HTTPException(404, "Unknown connection action.")
+        async with manager.lock:
+            return await manager.executor.connection_action(connection_id, action)
+
+    def task_store(request: Request, session_id: str):
+        owner = request.headers.get("x-nox-session-owner", "")
+        return manager.executor.store(session_id, owner)
+
+    @app.get("/api/voice/v1/sessions/{session_id}/tasks")
+    async def tasks(request: Request, session_id: str):
+        return task_store(request, session_id).snapshot()
+
+    @app.get("/api/voice/v1/sessions/{session_id}/tasks/{task_id}")
+    async def task_detail(request: Request, session_id: str, task_id: str):
+        task = task_store(request, session_id).tasks.get(task_id)
+        if task is None:
+            raise HTTPException(404, "Unknown task in this conversation.")
+        return task
+
+    @app.post("/api/voice/v1/sessions/{session_id}/tasks/{task_id}/cancel")
+    async def cancel_task(request: Request, session_id: str, task_id: str):
+        return await manager.executor.cancel(task_store(request, session_id), task_id)
 
     @app.post("/api/voice/v1/providers/{provider_id}/prepare", status_code=202)
     async def prepare(provider_id: ProviderId):
@@ -178,6 +224,7 @@ def create_app(config: ControllerConfig, supervisor: Supervisor | None = None) -
             manager.active = True
             revision = manager.configuration.revision
         tasks = []
+        bridge = TaskBridge(manager, socket, revision) if versioned else None
         try:
             async with connect(
                 f"ws://127.0.0.1:{config.worker_port}" + ("/voice/v1/ws" if versioned else "/ws"),
@@ -204,6 +251,13 @@ def create_app(config: ControllerConfig, supervisor: Supervisor | None = None) -
                         if not valid:
                             await socket.close(1003, "Invalid audio frame.")
                             return
+                        if bridge:
+                            try:
+                                if await bridge.control(json.loads(data)):
+                                    continue
+                            except (ValueError, TypeError, AttributeError):
+                                await socket.close(1003, "Invalid task control.")
+                                return
                         await remote.send(data)
 
                 async def downstream():
@@ -218,7 +272,9 @@ def create_app(config: ControllerConfig, supervisor: Supervisor | None = None) -
                                 value = json.loads(data)
                                 if value.get("type") == "session.ready":
                                     value["settingsRevision"] = revision
-                                    data = json.dumps(value)
+                                if bridge:
+                                    await bridge.worker(value)
+                                    continue
                             await socket.send_text(data)
 
                 tasks = [asyncio.create_task(upstream()), asyncio.create_task(downstream())]
@@ -227,6 +283,8 @@ def create_app(config: ControllerConfig, supervisor: Supervisor | None = None) -
             with suppress(RuntimeError, WebSocketDisconnect):
                 await socket.close(1011, "Engine connection closed.")
         finally:
+            if bridge:
+                await bridge.close()
             manager.active = False
             for task in tasks:
                 task.cancel()
@@ -255,5 +313,11 @@ def create_app(config: ControllerConfig, supervisor: Supervisor | None = None) -
 
         # Never echo a secret input inside Pydantic's default validation detail.
         return JSONResponse({"error": "Invalid request fields or values."}, status_code=422)
+
+    @app.exception_handler(ExecutionError)
+    async def execution_error(_, error):
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"error": str(error)}, status_code=503)
 
     return app

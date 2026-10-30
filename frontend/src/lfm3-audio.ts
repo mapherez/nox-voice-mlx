@@ -1,6 +1,10 @@
 import captureUrl from "./lfm3-capture-worklet.ts?worker&url";
 import { requestMicrophone } from "./microphone";
 import { base64ToPCM, pcmToBase64 } from "./pcm16";
+import {
+  isTaskSummary,
+  type TaskSummary,
+} from "./features/conversation/task-types";
 
 export type AudioCheckState =
   | "disconnected"
@@ -33,12 +37,18 @@ export class LFM3Audio {
   private state: AudioCheckState = "disconnected";
   private cancelConnection: (() => void) | null = null;
   muted = false;
+  executorEnabled = false;
+
+  get latestTurn(): number {
+    return this.turn;
+  }
 
   constructor(
     private onEnd: (message: string) => void,
     private onState: () => void,
     private onTranscript: (text: string) => void,
     private onProgress: (message: string) => void,
+    private onTask: (task: TaskSummary) => void = () => {},
   ) {}
 
   get active(): boolean {
@@ -195,6 +205,7 @@ export class LFM3Audio {
                   "The engine uses an incompatible audio protocol.",
                 );
               this.sessionId = message.sessionId;
+              this.executorEnabled = message.capabilities?.executor === true;
               this.sequence = message.sequence;
               this.change("ready");
               this.onProgress("");
@@ -271,6 +282,15 @@ export class LFM3Audio {
     )
       return;
     this.sequence = Number(message.sequence);
+    if (message.type === "task.updated") {
+      if (
+        !isTaskSummary(message.task) ||
+        message.task.sessionId !== this.sessionId
+      )
+        throw new Error("Invalid task event.");
+      this.onTask(message.task);
+      return;
+    }
     if (
       message.type === "transcript.completed" &&
       message.turnId === this.turn &&
@@ -375,6 +395,10 @@ export class LFM3Audio {
       track.enabled = !this.muted;
     });
     this.onState();
+  }
+
+  cancelTask(taskId: string): void {
+    if (this.active) this.send({ type: "task.cancel", taskId });
   }
 
   private fail(message: string): void {

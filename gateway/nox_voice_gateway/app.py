@@ -314,9 +314,13 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
             return JSONResponse({"error": "Invalid settings."}, status_code=422)
         return await forward("PUT", "/api/settings", value, timeout=180)
 
-    async def forward_voice(method: str, path: str, payload=None, timeout=8):
+    def session_owner(token):
+        return hmac.new(config.session_secret.encode(), token.encode(), "sha256").hexdigest()
+
+    async def forward_voice(method: str, path: str, payload=None, timeout=8, owner=None):
         try:
-            status, value = await remote.request(method, path, payload, timeout=timeout)
+            extra = {"owner": owner} if owner else {}
+            status, value = await remote.request(method, path, payload, timeout=timeout, **extra)
             if status < 400:
                 return JSONResponse(value, status_code=status)
             messages = {
@@ -335,6 +339,48 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
     @app.get("/api/voice/v1/providers")
     async def get_providers():
         return await forward_voice("GET", "/api/voice/v1/providers")
+
+    @app.api_route("/api/voice/v1/executor/settings", methods=["GET", "PUT"])
+    async def executor_settings(request: Request):
+        value = None
+        if request.method == "PUT":
+            try:
+                value = await request.json()
+            except ValueError:
+                return JSONResponse({"error": "Invalid executor settings."}, status_code=422)
+            if not isinstance(value, dict) or set(value) != {"schemaVersion", "revision", "enabled", "llm", "connections", "limits"}:
+                return JSONResponse({"error": "Invalid executor settings."}, status_code=422)
+        return await forward_voice(request.method, "/api/voice/v1/executor/settings", value)
+
+    @app.get("/api/voice/v1/executor/connections")
+    async def executor_connections():
+        return await forward_voice("GET", "/api/voice/v1/executor/connections")
+
+    @app.post("/api/voice/v1/executor/test")
+    async def executor_test():
+        return await forward_voice("POST", "/api/voice/v1/executor/test", timeout=20)
+
+    @app.post("/api/voice/v1/executor/connections/{connection_id}/{action}")
+    async def executor_connection(connection_id: str, action: str):
+        if not re.fullmatch(r"[a-z][a-z0-9_-]{0,47}", connection_id) or action not in {"connect", "disconnect", "refresh", "test"}:
+            return JSONResponse({"error": "Unknown connection action."}, status_code=404)
+        return await forward_voice("POST", f"/api/voice/v1/executor/connections/{connection_id}/{action}", timeout=180)
+
+    @app.get("/api/voice/v1/sessions/{session_id}/tasks")
+    @app.get("/api/voice/v1/sessions/{session_id}/tasks/{task_id}")
+    async def task_activity(request: Request, session_id: str, task_id: str | None = None):
+        if not re.fullmatch(r"[a-f0-9]{32}", session_id) or task_id is not None and not re.fullmatch(r"[a-f0-9]{32}", task_id):
+            return JSONResponse({"error": "Unknown conversation task."}, status_code=404)
+        token = request.cookies.get(cookie_name(request.state.browser_origin.startswith("https://")))
+        path = f"/api/voice/v1/sessions/{session_id}/tasks" + (f"/{task_id}" if task_id else "")
+        return await forward_voice("GET", path, owner=session_owner(token))
+
+    @app.post("/api/voice/v1/sessions/{session_id}/tasks/{task_id}/cancel")
+    async def cancel_task(request: Request, session_id: str, task_id: str):
+        if not re.fullmatch(r"[a-f0-9]{32}", session_id) or not re.fullmatch(r"[a-f0-9]{32}", task_id):
+            return JSONResponse({"error": "Unknown conversation task."}, status_code=404)
+        token = request.cookies.get(cookie_name(request.state.browser_origin.startswith("https://")))
+        return await forward_voice("POST", f"/api/voice/v1/sessions/{session_id}/tasks/{task_id}/cancel", owner=session_owner(token))
 
     @app.get("/api/voice/v1/settings")
     async def get_profiles():
@@ -409,7 +455,7 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
 
     @app.api_route("/api/voice/v1/credentials/{service}", methods=["PUT", "DELETE"])
     async def credential_write(service: str, request: Request):
-        if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", service):
+        if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", service):
             return JSONResponse({"error": "Unknown credential service."}, status_code=404)
         value = None
         if request.method == "PUT":
@@ -455,7 +501,7 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
             return
         tasks = []
         try:
-            connection = remote.voice_conversation() if versioned else remote.conversation()
+            connection = remote.voice_conversation(owner=session_owner(token)) if versioned else remote.conversation()
             async with connection as upstream:
                 await socket.accept()
                 connections.setdefault(token, set()).add(socket)

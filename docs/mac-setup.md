@@ -93,7 +93,7 @@ Hugging Face.
 
 Select **LFM3-Audio-2B** in Models, download its files and click **Load**. The
 pinned model uses Q8_0 with a BF16 projector and llama.cpp b11960. On the main
-page choose **Check audio**, allow microphone access, and hold Space or the touch
+page choose **Connect LFM3**, allow microphone access, and hold Space or the touch
 button to speak. Release to get the complete transcript. Enter text under
 **Text to read aloud** to test synthesis. Space/touch during speech interrupts
 playback and starts a new utterance. Space retains normal typing behaviour in
@@ -105,8 +105,9 @@ behaviour. A muted microphone requires explicit Unmute before capture.
 
 The Voice tab provides input language, vocabulary hints, output language and
 female/male voices. Portuguese is selectable; PT-PT speech quality needs actual
-language/device validation. LFM3 currently runs audio checks, with no executor
-or MCP actions. PersonaPlex retains continuous native voice conversation.
+language/device validation. Enable [Executor & MCP](executor.md) for LLM answers
+and app actions; it runs on this Mac and uses explicitly configured services.
+PersonaPlex retains continuous native voice conversation independently.
 
 ## Ports and network address
 

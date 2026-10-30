@@ -1,7 +1,8 @@
 # Stage 2.2 — React, TypeScript and Vite+ implementation plan
 
-**Status:** implemented; automated acceptance passed; real deployment acceptance
-is pending before stage 3.
+**Status:** complete. Automated acceptance passed and the user confirmed real
+deployment parity on October 30, 2026, including Clear downloads after updating
+the running native controller.
 
 The user approved this plan and selected React, TypeScript and Vite+.
 This document expands [stage 2.2 of the engine
@@ -34,13 +35,11 @@ state and imperative DOM updates concentrated in `frontend/index.html`,
 renderers with the React structure below. Audio, worklets, PCM utilities,
 provider helpers and the Three.js orb retain their separate implementations.
 
-The reported Clear downloads failure in the user's deployment is unresolved:
-the browser received HTML where it expected JSON. Repository tests cover
-successful history clearing through the gateway/mTLS/controller and preserve
-files and active work; the frontend now diagnoses non-JSON responses. Capture
-the deployment response/status and track its actual cause separately. A React
-migration must not be presented as a fix for that unknown cause. Recheck the
-same action during deployment acceptance and report any remaining failure.
+The deployed Clear downloads failure was traced to the running controller copy
+missing the DELETE route and history-clearing implementation. The gateway hid
+the resulting 405 behind a generic 502. Updating the native controller resolved
+the failure; the user confirmed successful real operation. React migration was
+not the fix for that deployment mismatch.
 
 ## Target structure and ownership
 
@@ -106,13 +105,13 @@ Each item is part of stage 2.2, not a replacement for an original engine stage.
    stage, CI, development commands and third-party notices. Keep the final
    static output at `frontend/dist` for the Python gateway. Validate clean
    installs and the supported Linux image platforms.
-6. [ ] **Verify parity and hand over for deployment validation.** Run the acceptance
+6. [x] **Verify parity and hand over for deployment validation.** Run the acceptance
    checks below, compare the baseline, update architecture/validation/setup
    documentation, and report results and limitations. Mark 2.2 complete only
    after its acceptance is satisfied; then resume stage 3.
 
-Automated checks and the handover portion of item 6 are complete. The remaining
-work is the real deployment acceptance in the checklist. Observed test/build
+Automated checks, handover and user-reported real deployment acceptance are
+complete. Observed test/build
 results and limits are recorded in [validation](validation.md#stage-22-automated-migration-validation).
 The project pins React/React DOM 19.3.1, Vite+ 1.4.0, Node 24.22.1 and npm
 11.19.1. Its bundled Vite/Vitest versions remain 8.3.5/5.0.5.
@@ -136,8 +135,8 @@ The project pins React/React DOM 19.3.1, Vite+ 1.4.0, Node 24.22.1 and npm
   hooks, agent files and editor setup. No global Node/package-manager changes
   are required for this repository migration.
 - Use a pinned, supported glibc frontend builder, targeting the existing
-  `linux/amd64` and `linux/arm64` images. The current builder is Alpine; resolve
-  this at build time instead of relying on experimental musl tooling support.
+  `linux/amd64` and `linux/arm64` images. The builder uses glibc and its native
+  `BUILDPLATFORM`, so frontend checks do not require target-platform emulation.
   The deployed Python runtime still receives only the static frontend output.
 - Update the CI's frontend install/cache/check/test/build steps and preserve its
   Python/security/container checks. Keep dependency installation reproducible.

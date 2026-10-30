@@ -1,6 +1,7 @@
-import { useWorkspace } from "../../app/workspace";
+import { useWorkspace, useSnapshot } from "../../app/workspace";
 export function SettingsFooter() {
   const { runtime, workspace, settings, view } = useWorkspace();
+  const executor = useSnapshot(runtime.executor);
   return (
     <footer
       className="drawer-footer settings-footer"
@@ -15,15 +16,20 @@ export function SettingsFooter() {
           {view.memoryLabel}
         </strong>{" "}
         <p id="settings-feedback" className="field-help" role="status">
-          {settings.feedback}
+          {workspace.tab === "executor" ? executor.feedback : settings.feedback}
         </p>{" "}
         <button
           type="button"
           id="reload-settings"
           className="text-button"
-          hidden={!settings.conflict}
+          hidden={
+            workspace.tab === "executor"
+              ? !executor.conflict
+              : !settings.conflict
+          }
           onClick={() => {
-            void runtime.settings.load(true);
+            if (workspace.tab === "executor") void runtime.executor.load(true);
+            else void runtime.settings.load(true);
           }}>
           {" "}
           Reload saved settings{" "}
@@ -71,6 +77,21 @@ export function SettingsFooter() {
           </button>{" "}
         </div>{" "}
       </div>{" "}
+      <button
+        type="button"
+        id="save-executor"
+        className="button secondary"
+        hidden={workspace.tab !== "executor"}
+        disabled={
+          executor.busy ||
+          !executor.dirty ||
+          Boolean(workspace.status?.conversationActive)
+        }
+        onClick={() => {
+          void runtime.executor.save().then(() => runtime.library.refresh());
+        }}>
+        Save settings
+      </button>
       <button
         type="button"
         id="save-settings"

@@ -7,7 +7,8 @@ The [multi-model engine contract](voice-engine-contract.md) records the agreed
 integration of PersonaPlex and LFM3 in this same webapp. Stages 1–2 provide the
 catalogue, versioned settings and LFM3 audio checks. PersonaPlex keeps its native
 conversation. LFM3 can transcribe complete utterances and synthesize supplied
-text; its executor, task store and conversation flow are still pending.
+text. Stage 3 adds an optional native executor, discovered MCP tools and an
+in-memory task store; real service/model acceptance is separate from fixtures.
 
 The production path is frontend → authenticated gateway → mutually authenticated
 Mac controller → authenticated loopback worker. Google OAuth and Hugging Face
@@ -85,8 +86,9 @@ The LFM3 client uses the additive `/voice/v1/ws` JSON protocol through the same
 authenticated gateway and mTLS controller. Holding Space or the touch button
 captures 16 kHz PCM16; release flushes the worklet's final partial packet before
 committing the utterance. Transcription results are shown literally. A separate
-text field requests audio-only 24 kHz TTS. These controls are explicitly labelled
-as audio checks: no executor, MCP call or automatic assistant answer is involved.
+text field requests audio-only 24 kHz TTS. With execution disabled these are audio
+checks. Enabling the saved executor profile admits complete transcripts as tasks
+and can read concise current-turn answers without changing the worker protocol.
 Pressing Space during speech stops scheduled browser output immediately, cancels
 the native operation and starts a new capture. Session, turn and playback IDs
 reject stale results. Only synthesized output feeds the orb's analyser.
@@ -97,6 +99,22 @@ the application cannot force permanent permission. Permission/device failures
 have actionable messages. Disconnect, backgrounding and logout release capture.
 
 ## Native boundary
+
+The native `controller/executor/` modules own private endpoint settings,
+Streamable HTTP MCP sessions, JSON Schema validation, stateless chat completions
+and conversation-scoped task receipts/references. The audio worker owns no LLM
+credentials or MCP tools. A controller bridge orders audio and task events on
+the same wire. HTTP activity routes use an opaque owner derived by the gateway
+from its authenticated browser session; browser-supplied owner headers are ignored.
+Another login cannot inspect or cancel that conversation's work.
+
+Execution never holds the LFM3 runtime slot. Dependent calls run sequentially,
+with actual results and explicit structured bindings before the next decision.
+Invocation redelivery cannot replay an effect; uncertain results stop execution.
+Session end/Stop closes admission before waiting for cooperative cancellation.
+The store is in memory and cannot restore tasks after restart. Current-turn speech
+is presented only while idle; late results remain visible for explicit reading.
+Stage 4 adds full notification queues/policies. See [Executor](executor.md).
 
 The controller is exposed only at its configured private IP and uses server TLS
 with a required client certificate. The gateway verifies the CA and host/IP and

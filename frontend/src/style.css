@@ -1469,3 +1469,72 @@ summary:hover {
   align-items: center;
   gap: 8px;
 }
+
+/* Executor profiles and conversation-scoped activity. */
+#panel-executor fieldset {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 20px 0;
+  min-width: 0;
+}
+#panel-executor legend {
+  padding: 0 8px;
+  font-weight: 600;
+}
+.executor-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+}
+.executor-toggle input {
+  width: auto;
+  flex: 0 0 auto;
+}
+.executor-connection + .executor-connection {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 20px;
+}
+#panel-executor .engine-buttons {
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+#panel-executor details {
+  margin: 20px 0;
+}
+.task-activity {
+  width: min(100%, 680px);
+  margin: 24px auto;
+  text-align: left;
+}
+.task-entry {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin: 12px 0;
+}
+.task-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.task-transcript {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.task-output {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.task-receipts {
+  overflow: auto;
+  max-height: 320px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+}
+.task-entry .engine-buttons {
+  flex-wrap: wrap;
+}

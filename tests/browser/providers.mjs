@@ -38,18 +38,29 @@ try {
     });
   }
   const audioMessages = [];
+  let executorMode = false;
+  let emittedTask = null;
   let sequence = 0;
   await page.routeWebSocket("**/voice/v1/ws", (wire) => {
     const emit = (value) => wire.send(JSON.stringify({ sessionId: "browser-fixture", sequence: ++sequence, ...value }));
     wire.onMessage((raw) => {
       const value = JSON.parse(String(raw));
       audioMessages.push(value);
-      if (value.type === "session.start") emit({ type: "session.ready", version: 1, audio: { inputRate: 16000, outputRate: 24000, format: "pcm16le" } });
+      if (value.type === "session.start") emit({ type: "session.ready", version: 1, capabilities: { executor: executorMode }, audio: { inputRate: 16000, outputRate: 24000, format: "pcm16le" } });
       else if (value.type === "turn.start") emit({ type: "turn.started", turnId: value.turnId });
-      else if (value.type === "turn.commit") emit({ type: "transcript.completed", turnId: value.turnId, text: "Find all matching resources and delete the results." });
+      else if (value.type === "turn.commit") {
+        emit({ type: "transcript.completed", turnId: value.turnId, text: "Find all matching resources and delete the results." });
+        if (executorMode) {
+          emittedTask = { taskId: "a".repeat(32), sessionId: "browser-fixture", turnId: value.turnId, state: "planning", transcript: "Find matching resources", output: "", speech: "", error: "", stepCount: 0 };
+          emit({ type: "task.updated", task: emittedTask });
+          emittedTask = { ...emittedTask, state: "succeeded", output: "The matching resources were removed.", speech: "Done.", stepCount: 2 };
+          emit({ type: "task.updated", task: emittedTask });
+        }
+      }
       else if (value.type === "speech.request") {
         emit({ type: "speech.started", playbackId: value.playbackId });
         emit({ type: "speech.audio", playbackId: value.playbackId, audio: Buffer.alloc(3840).toString("base64") });
+        if (executorMode) emit({ type: "speech.ended", playbackId: value.playbackId });
       } else if (value.type === "speech.interrupt") {
         emit({ type: "speech.interrupted", playbackId: value.playbackId });
         // A delayed frame from the old playback must never resume that speech.
@@ -61,7 +72,7 @@ try {
   await page.goto(frontendUrl);
   await page.locator("#open-settings").click();
   await page.waitForFunction(() => !document.getElementById("save-settings").disabled);
-  assert.equal(await page.locator('[role="tab"]').count(), 4);
+  assert.equal(await page.locator('[role="tab"]').count(), 5);
   assert.equal(await page.locator("#model-provider option").count(), 2);
   await page.screenshot({ path: join(temporary, "settings-models-desktop.png"), fullPage: true });
   // Native folder action calls the controller; there is no web file explorer.
@@ -164,7 +175,7 @@ try {
   await page.waitForFunction(() => document.getElementById("header-state").textContent === "Model loaded");
   assert.equal(await page.locator("#loaded-model-name").textContent(), "LFM3-Audio-2B");
   await page.locator("#close-settings").click();
-  assert.equal(await page.locator("#start-conversation-label").innerText(), "Check audio");
+  assert.equal(await page.locator("#start-conversation-label").innerText(), "Connect LFM3");
   await page.locator("#start-conversation").click();
   await page.locator("#audio-checks").waitFor({ state: "visible" });
   // Compact phones/tablets get touch wording, without a keyboard assumption.
@@ -251,7 +262,7 @@ try {
   assert.equal(await page.locator("#tab-credentials").getAttribute("aria-selected"), "true");
   assert.equal(await page.evaluate(() => document.activeElement.id), "tab-credentials");
   await page.keyboard.press("End");
-  assert.equal(await page.locator("#tab-general").getAttribute("aria-selected"), "true");
+  assert.equal(await page.locator("#tab-executor").getAttribute("aria-selected"), "true");
   await page.keyboard.press("Escape");
   await page.locator("#settings").waitFor({ state: "hidden" });
   assert.equal(await page.evaluate(() => document.activeElement.id), "open-settings");
@@ -272,8 +283,58 @@ try {
   assert.equal(await page.locator('meta[name="theme-color"]').getAttribute("content"), "#0b1018");
   await page.locator("#theme").selectOption("light");
 
+  // Executor profiles are separate, saved explicitly, and work at phone widths.
+  await page.locator("#tab-executor").click();
+  await page.locator("#executor-model").fill("fixture-executor");
+  await page.getByRole("button", { name: "Add connection", exact: true }).click();
+  await page.locator('.executor-connection input[id$="-name"]').fill("My fixture");
+  await page.locator("#save-executor").click();
+  await page.getByRole("button", { name: "Test LLM", exact: true }).click();
+  await page.waitForFunction(() => document.getElementById("settings-feedback").textContent.includes("Fixture endpoint reachable"));
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
+  await page.waitForFunction(() => document.getElementById("panel-executor").textContent.includes("1 tool"));
+  await page.getByText("Discovered tools", { exact: true }).click();
+  assert.ok(await page.getByText("Search anything", { exact: true }).isVisible());
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  assert.ok(await page.locator("#settings").evaluate((element) => element.scrollWidth <= element.clientWidth));
+  await page.screenshot({ path: join(temporary, "settings-executor-mobile.png"), fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({ path: join(temporary, "settings-executor-desktop.png"), fullPage: true });
+  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  assert.equal((await (await page.request.get(`${url}/api/voice/v1/executor/settings`)).json()).llm.model, "fixture-executor");
+
+  await page.getByLabel("Enable LFM3 answers and actions").check();
+  await page.locator("#save-executor").click();
+  await page.locator("#tab-models").click();
+  await page.locator("#model-provider").selectOption("lfm3-audio");
+  await page.locator("#tab-voice").click();
+  await page.locator("#save-settings").click();
+  await page.locator("#tab-models").click();
+  await page.locator("#start-engine").click();
+  await page.waitForFunction(() => document.getElementById("header-state").textContent === "Model loaded");
+  await page.locator("#close-settings").click();
+  executorMode = true;
+  await page.locator("#start-conversation").click();
+  await page.locator("#hold-to-talk").waitFor({ state: "visible" });
+  const holdRect = await page.locator("#hold-to-talk").boundingBox();
+  await page.mouse.move(holdRect.x + holdRect.width / 2, holdRect.y + holdRect.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(200);
+  await page.mouse.up();
+  await page.getByText("The matching resources were removed.", { exact: true }).waitFor();
+  assert.ok(audioMessages.some((message) => message.type === "speech.request" && message.text === "Done."));
+  await page.route("**/api/voice/v1/sessions/*/tasks/*", route => route.fulfill({ json: { ...emittedTask, steps: [{ tool: "generic.search", receipt: { confirmed: true } }] } }));
+  await page.getByRole("button", { name: "View full result", exact: true }).click();
+  await page.locator(".task-receipts").waitFor({ state: "visible" });
+  assert.match(await page.locator(".task-receipts").innerText(), /generic.search/);
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: join(temporary, "executor-activity-mobile.png"), fullPage: true });
+  await page.locator("#end-conversation").click();
+
   assert.deepEqual(errors, []);
-  console.log("Settings QA passed: tabs, credentials, Finder action, downloads/cancel/resume, Load/Eject, profile conflict, mobile layout and LFM3 Space/touch interruption.");
+  console.log("Settings QA passed: tabs, credentials, Finder action, downloads/cancel/resume, Load/Eject, profile conflict, mobile layout, LFM3 Space/touch interruption, executor profiles/discovery and foreground task answers/results.");
 } finally {
   await browser.close();
   await rm(profile, { recursive: true, force: true });

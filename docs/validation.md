@@ -106,11 +106,49 @@ bundle (about 823 kB, 221 kB gzipped). Static checks have no lint/type warnings;
 this bundle-size notice is a separate build diagnostic, not a performance
 measurement.
 
-Stage 2.2 awaits real deployment acceptance before stage 3: repeat the existing
-Mac model/audio/Finder/Load/Eject and mobile checks with the rebuilt webapp.
-The previously reported Clear downloads HTML response remains undiagnosed in
-that deployment. Its success and failure paths pass in fixtures and real mTLS
-API tests; that evidence does not identify the source of the reported HTML.
+The user confirmed real deployment parity after the migration, covering the
+established Mac/audio/Finder/Load/Eject and mobile checks. Clear was traced to
+the running controller copy lacking its DELETE route and clearing function.
+An isolated reproduction returned controller 405 and gateway 502 with the exact
+reported localhost error. Updating the native controller resolved it; the user
+confirmed successful Clear operation. The intermediary replacing the public
+502 body with HTML was not separately identified. Stage 2.2 is accepted.
+
+### Stage 3 executor validation
+
+Automated validation on October 30, 2026 observed:
+
+- 201 Python tests passed; the opt-in container test was skipped in that suite
+  and passed separately for both ARM64 and AMD64. Ruff passed and the locked
+  Python dependency audit reported no known vulnerabilities.
+- 74 frontend tests passed, with Vite+ format/lint/type checks, HTML validation
+  and production bundling. The existing large-bundle notice remains.
+- Generic executor fixtures cover ordinary answers without MCP, dependent
+  search/action bindings, 15 tool rounds without a fixed ceiling, invalid
+  schemas/tools/batches before dispatch, deduplication, stale/ambiguous
+  references, unsupported required descriptors, partial outcomes, cancellation
+  and deadlines with unknown admitted effects, and explicit resource limits.
+- A real loopback HTTP/WebSocket/mTLS test links synthetic LFM3 audio through
+  the native controller to disposable LLM/MCP endpoints. It verifies the original
+  transcript, two dependent calls using actual IDs/revisions, saved bearer auth,
+  secret redaction in model/browser data, owner-only task detail, ordered events
+  and supplied-text TTS. No actual product effect or real model inference occurs.
+- MCP tests exercise JSON and SSE responses, initialization, session/protocol
+  headers and paginated catalogues. Discovery performs no business tool call.
+- Compiled and Vite+ development Chrome QA passed for existing controls and the
+  new executor profiles, discovery, foreground response, activity/result detail
+  and mobile layout. New state tests cover late profile responses, draft
+  preservation, duplicate speech prevention and no interruption by stale results.
+- The current two-platform Docker build and both startup/security checks passed.
+  No image was published and no running installation was changed by these tests.
+
+Stage 3 still needs actual user acceptance with the selected LM Studio model,
+direct MCP servers and voice models. Fixture LLM decisions do not establish a
+real model's tool selection, compound-request fidelity, confirmation behavior,
+language quality or latency. Test ordinary questions, a read-only search, then
+an explicitly requested disposable compound action and its actual receipts.
+Check cancellation/end/Stop and PersonaPlex independently. Notification queue
+policies remain stage 4 and NoX Suite negotiation/acceptance remains stage 6.
 
 ### Reported deployment validation
 

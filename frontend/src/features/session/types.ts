@@ -28,4 +28,9 @@ export type EngineStatus = {
     error: string | null;
   };
 };
-export type SettingsTab = "models" | "voice" | "credentials" | "general";
+export type SettingsTab =
+  | "models"
+  | "voice"
+  | "credentials"
+  | "general"
+  | "executor";

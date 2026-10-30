@@ -1,6 +1,7 @@
 import { ConversationAudio } from "../../audio";
 import { LFM3Audio, type AudioCheckState } from "../../lfm3-audio";
 import { Observable, errorMessage } from "../../services/observable";
+import type { TaskSummary } from "./task-types";
 type State = {
   active: boolean;
   busy: boolean;
@@ -11,12 +12,15 @@ type State = {
   transcript: string;
   latency: string;
   rtf: string;
+  executorEnabled: boolean;
+  tasks: TaskSummary[];
 };
 export class AudioSession extends Observable<State> {
   readonly plex: ConversationAudio;
   readonly lfm: LFM3Audio;
   private current: ConversationAudio | LFM3Audio;
   private generation = 0;
+  private presented = new Set<string>();
   constructor(
     private notice: (message: string) => void,
     private ended: () => void,
@@ -31,6 +35,8 @@ export class AudioSession extends Observable<State> {
       transcript: "",
       latency: "—",
       rtf: "—",
+      executorEnabled: false,
+      tasks: [],
     });
     const onEnd = (message: string) => {
       this.notice(message);
@@ -54,6 +60,22 @@ export class AudioSession extends Observable<State> {
       () => this.publish(),
       (transcript) => this.update({ transcript }),
       (message) => this.notice(message),
+      (task) => {
+        const tasks = this.state.tasks.filter(
+          (value) => value.taskId !== task.taskId,
+        );
+        this.update({ tasks: [...tasks, task] });
+        if (task.speech && !this.presented.has(task.taskId)) {
+          this.presented.add(task.taskId);
+          if (
+            this.lfm.active &&
+            !this.lfm.muted &&
+            this.lfm.activity === "ready" &&
+            task.turnId === this.lfm.latestTurn
+          )
+            this.lfm.speak(task.speech);
+        }
+      },
     );
     this.current = this.plex;
   }
@@ -74,6 +96,7 @@ export class AudioSession extends Observable<State> {
       checking: this.current === this.lfm,
       recording: this.lfm.recording,
       activity: this.lfm.activity,
+      executorEnabled: this.lfm.executorEnabled,
     });
   }
   assistantEnergy = (): number => this.current.assistantEnergy();
@@ -81,6 +104,7 @@ export class AudioSession extends Observable<State> {
     const generation = ++this.generation;
     this.notice("");
     this.update({ latency: "—", rtf: "—" });
+    if (this.current === this.lfm) this.clearActivity();
     // Invoke directly from the click, before an await/effect loses the gesture.
     const promise = this.current.start();
     this.publish();
@@ -111,5 +135,9 @@ export class AudioSession extends Observable<State> {
   }
   interruptSpeech(): void {
     this.lfm.interruptSpeech();
+  }
+  clearActivity(): void {
+    this.presented.clear();
+    this.update({ tasks: [] });
   }
 }

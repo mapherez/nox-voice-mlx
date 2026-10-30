@@ -74,7 +74,7 @@ class Controller:
             self._ssl = context
         return self._ssl
 
-    async def request(self, method: str, path: str, payload=None, timeout=8) -> tuple[int, dict]:
+    async def request(self, method: str, path: str, payload=None, timeout=8, owner=None) -> tuple[int, dict]:
         if self._client is None:
             self._client = httpx.AsyncClient(
                 base_url=self.config.controller_url,
@@ -83,7 +83,8 @@ class Controller:
                 trust_env=False,
             )
         try:
-            response = await self._client.request(method, path, json=payload, timeout=timeout)
+            response = await self._client.request(method, path, json=payload, timeout=timeout,
+                headers={"X-NoX-Session-Owner": owner} if owner else None)
             value = response.json()
             if not isinstance(value, dict):
                 raise ValueError("Unexpected controller response")
@@ -106,10 +107,11 @@ class Controller:
             proxy=None,
         )
 
-    def voice_conversation(self):
+    def voice_conversation(self, owner=None):
         return connect(
             self.config.controller_url.replace("https://", "wss://", 1) + "/voice/v1/ws",
             ssl=self.context(),
+            additional_headers={"X-NoX-Session-Owner": owner} if owner else None,
             max_size=65536,
             max_queue=4,
             write_limit=32768,

@@ -33,7 +33,8 @@ def test_legacy_read_and_catalogue_do_not_migrate_or_load_models(tmp_path):
         assert len(plex["settingsSchema"]["properties"]["voice"]["enum"]) == 18
         assert lfm["implemented"] and lfm["selectable"]
         assert lfm["availability"] == "preparation_required"
-        assert lfm["capabilities"]["audioChecks"] and not lfm["capabilities"]["executor"]
+        assert lfm["capabilities"]["audioChecks"] and lfm["capabilities"]["executor"]
+        assert not plex["capabilities"]["executor"]
         assert lfm["audio"]["inputRate"] == 16000
         assert "Portuguese" in lfm["settingsSchema"]["properties"]["inputLanguage"]["enum"]
         assert client.get("/api/engine/status").json()["state"] == "stopped"

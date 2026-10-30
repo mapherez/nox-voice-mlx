@@ -3,6 +3,7 @@ import { useMediaQuery } from "../../components/ui/use-media-query";
 import { AudioChecks } from "./AudioChecks";
 import { VoiceOrb } from "./VoiceOrb";
 import { AssistantIndicator } from "./AssistantIndicator";
+import { TaskActivity } from "./TaskActivity";
 export function Conversation() {
   const { runtime, workspace, audio, view } = useWorkspace();
   const touch = useMediaQuery("(pointer: coarse), (max-width: 1024px)");
@@ -25,7 +26,7 @@ export function Conversation() {
     } else if (view.state === "ready" && !view.loading) {
       title = "Ready when you are.";
       subtitle = audio.checking
-        ? "Check transcription and speech with LFM3. Conversation support comes next."
+        ? "Use LFM3 for audio checks, or enable answers in Executor & MCP settings."
         : "Start a conversation. Make it your own.";
     } else if (view.loading) {
       title = view.state !== "stopping" ? "Getting ready." : "Winding down.";
@@ -95,7 +96,7 @@ export function Conversation() {
             <path d="M5 10a7 7 0 0 0 14 0M12 17v4m-4 0h8" />{" "}
           </svg>{" "}
           <span id="start-conversation-label">
-            {audio.checking ? "Check audio" : "Start conversation"}
+            {audio.checking ? "Connect LFM3" : "Start conversation"}
           </span>{" "}
         </button>{" "}
         <button
@@ -118,7 +119,7 @@ export function Conversation() {
           conversation{" "}
         </button>{" "}
       </div>{" "}
-      <AudioChecks />{" "}
+      <AudioChecks /> <TaskActivity />
       <button
         type="button"
         id="engine-hint"

@@ -22,7 +22,7 @@ class EchoStream:
 
 def install_stream(remote):
     @asynccontextmanager
-    async def conversation():
+    async def conversation(**kwargs):
         yield EchoStream()
 
     remote.conversation = conversation

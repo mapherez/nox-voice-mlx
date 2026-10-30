@@ -11,7 +11,7 @@ ProviderId = Literal["personaplex", "lfm3-audio"]
 
 
 class LFM3Settings(BaseModel):
-    """Independent configuration reserved for the LFM3 adapter, not a runnable provider yet."""
+    """Independent language/voice configuration for the LFM3 audio adapter."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
     inputLanguage: str = Field(default="auto", min_length=1, max_length=80)

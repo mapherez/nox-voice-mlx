@@ -44,13 +44,13 @@ login is required for both and needs Internet access to Google.
   full/4/5/6/8-bit precision. **7B describes the parameter count**, not bit depth.
 - Versioned model profiles and a controller-supplied model catalogue in Settings.
   PersonaPlex keeps its existing conversation flow. LFM3 now provides explicit
-  transcription/speech checks in this webapp, with Space/touch interruption and
-  independent language/voice settings. Its executor and conversation flow are
-  the next implementation stage; the isolated experiment remains separate.
+  transcription/speech checks and an optional native executor for LLM answers
+  and MCP actions, with Space/touch interruption and independent language/voice
+  settings. See [Executor setup](docs/executor.md); the experiment remains separate.
 - Download either model from Settings, with per-file/total progress, cancel and
   resume in the Download Manager. Load/Eject controls memory independently of
   downloads. Open each model folder in Finder on the controller Mac.
-- A general Credentials section with private Hugging Face token storage and
+- A general Credentials section with private Hugging Face, executor and MCP key storage and
   access testing. PersonaPlex needs model access and a read token; LFM3 downloads
   directly. No manual model-file downloads are required.
 - A light/dark interface, Settings organized into tabs, and a procedural sphere
@@ -76,6 +76,8 @@ native ARM64 Python 3.12. Normal Docker deployment does not require Node or npm.
 | [Architecture](docs/architecture.md)       | Authentication, transport, model loading and privacy boundaries                   |
 | [Multi-model engine contract](docs/voice-engine-contract.md) | Agreed target and implementation progress for PersonaPlex/LFM3, settings, interruption, tasks and NoX Suite integration |
 | [Stage 2.2 implementation plan](docs/implementation-stage-2.2.md) | React, TypeScript and Vite+ migration, structure and acceptance status |
+| [Stage 3 implementation](docs/implementation-stage-3.md) | Generic executor, task store, validation and remaining real acceptance |
+| [Executor setup and API](docs/executor.md) | LM Studio, MCP connections, credentials and task behavior |
 | [Validation](docs/validation.md)           | Development checks and deployment acceptance                                      |
 | [Third-party notices](docs/notices.md)     | Licenses and upstream components                                                  |
 

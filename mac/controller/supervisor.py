@@ -40,8 +40,10 @@ class Supervisor:
         self.client = httpx.AsyncClient(
             base_url=f"http://127.0.0.1:{config.worker_port}", timeout=5, trust_env=False
         )
+        from .executor.service import ExecutorService
         from .model_library import ModelLibrary
 
+        self.executor = ExecutorService(self)
         self.library = ModelLibrary(self)
 
     @property
@@ -214,6 +216,7 @@ class Supervisor:
     async def _watch_exit(self, process) -> None:
         await process.wait()
         if process is self.process and self.state not in {"stopping", "stopped"}:
+            await self.executor.end_all()
             self.state, self.phase, self.active = "error", "Error", False
             self.error = (
                 "Engine exited. Check model files and the native installation, then restart."
@@ -250,6 +253,7 @@ class Supervisor:
             return await self._stop_locked()
 
     async def _stop_locked(self) -> dict:
+        await self.executor.end_all()
         preparing = self.preparation_process
         if preparing is not None:
             self.preparation_process = None
@@ -504,6 +508,7 @@ class Supervisor:
 
     async def close(self) -> None:
         try:
+            await self.executor.close()
             await self.library.close()
         finally:
             await self.stop()

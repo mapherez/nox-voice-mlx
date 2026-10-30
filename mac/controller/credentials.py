@@ -46,9 +46,19 @@ class CredentialWrite(BaseModel):
 
 
 class Credentials:
-    def __init__(self, config):
+    def __init__(self, config, definitions=lambda: {}):
         self.path = config.data_dir / "credentials.json"
         self.lock = threading.RLock()
+        self.definitions = definitions
+
+    @property
+    def services(self):
+        services = {**SERVICES, **self.definitions()}
+        for key in self.read():
+            if key not in services and re.fullmatch(r"mcp-[a-z][a-z0-9_-]{0,47}", key):
+                services[key] = {"id": key, "name": key, "fieldLabel": "API key",
+                    "help": "No connection currently uses this saved key. You can remove it here."}
+        return services
 
     def read(self):
         with self.lock:
@@ -65,11 +75,13 @@ class Credentials:
         saved = self.read()
         return {"services": [{**definition, "configured": bool(saved.get(key, {}).get("secret")),
             "testSupported": key in TESTERS, "test": saved.get(key, {}).get("test"),
-            "testedAt": saved.get(key, {}).get("testedAt")} for key, definition in SERVICES.items()]}
+            "testedAt": saved.get(key, {}).get("testedAt")} for key, definition in self.services.items()]}
 
     def save(self, service, secret):
-        if service not in SERVICES:
+        if service not in self.services:
             raise ValueError("Unsupported credential service.")
+        if any(ord(char) < 33 or ord(char) > 126 for char in secret):
+            raise ValueError("Enter a printable bearer credential without whitespace.")
         validator = VALIDATORS.get(service)
         if validator and not validator.fullmatch(secret):
             raise ValueError("Invalid credential format for this service.")

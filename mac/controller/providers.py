@@ -114,7 +114,7 @@ class Provider:
             "capabilities": {
                 "nativeConversation": self.native_conversation,
                 "legacyAudio": self.legacy_audio,
-                "executor": False,
+                "executor": self.id == "lfm3-audio" and implemented,
                 "audioChecks": self.id == "lfm3-audio" and implemented,
                 "pushToTalk": self.id == "lfm3-audio" and implemented,
                 "transcription": self.id == "lfm3-audio" and implemented,
@@ -144,7 +144,7 @@ class Provider:
             else {key: "next_conversation" for key in schema["properties"]},
             "languageNotice": "The official conversational model supports English. Other languages are experimental."
             if self.id == "personaplex"
-            else "Audio checks are available. The conversation executor is not integrated yet. Portuguese speech quality is experimental.",
+            else "Audio checks are available. Enable Executor & MCP for answers and actions. Portuguese speech quality is experimental.",
         }
 
 

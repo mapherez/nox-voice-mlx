@@ -7,6 +7,7 @@ import { VoiceTab } from "./VoiceTab";
 import { CredentialsTab } from "./CredentialsTab";
 import { GeneralTab } from "./GeneralTab";
 import { SettingsFooter } from "./SettingsFooter";
+import { ExecutorTab } from "./ExecutorTab";
 export function SettingsDialog() {
   const runtime = useRuntime(),
     workspace = useSnapshot(runtime);
@@ -57,6 +58,7 @@ export function SettingsDialog() {
           <VoiceTab />
           <CredentialsTab />
           <GeneralTab />
+          <ExecutorTab />
         </div>
       </div>
       <SettingsFooter />

@@ -3,6 +3,7 @@ import { Observable, errorMessage, isAborted } from "../services/observable";
 import { SettingsController } from "../features/settings/settings-controller";
 import { LibraryController } from "../features/models/library-controller";
 import { DiagnosticsController } from "../features/settings/diagnostics-controller";
+import { ExecutorController } from "../features/settings/executor-controller";
 import { AudioSession } from "../features/conversation/audio-session";
 import { HoldControls } from "../features/conversation/hold-controls";
 import type {
@@ -27,6 +28,7 @@ export class AppRuntime extends Observable<State> {
   readonly settings: SettingsController;
   readonly library: LibraryController;
   readonly diagnostics: DiagnosticsController;
+  readonly executor: ExecutorController;
   readonly audio: AudioSession;
   readonly hold: HoldControls;
   private generation = 0;
@@ -56,6 +58,7 @@ export class AppRuntime extends Observable<State> {
     );
     this.library = new LibraryController(this.client.request);
     this.diagnostics = new DiagnosticsController(this.client.request);
+    this.executor = new ExecutorController(this.client.request);
     this.hold = new HoldControls(
       this.audio.lfm,
       () => this.state.settingsOpen || this.state.downloadsOpen,
@@ -81,10 +84,12 @@ export class AppRuntime extends Observable<State> {
     this.polling = null;
     this.client.reset();
     this.audio.stop();
+    this.audio.clearActivity();
     this.hold.reset();
     this.settings.reset();
     this.library.reset();
     this.diagnostics.reset();
+    this.executor.reset();
     this.update({
       session: null,
       status: null,
@@ -137,6 +142,7 @@ export class AppRuntime extends Observable<State> {
     if (!this.state.session) return;
     this.update({ settingsOpen: true });
     void this.settings.load();
+    void this.executor.load();
     void this.testConnection();
   }
   closeSettings = (): void => {

@@ -23,7 +23,8 @@ ACTIVE = {"queued", "resolving", "downloading", "verifying", "extracting", "canc
 class ModelLibrary:
     def __init__(self, manager):
         self.manager, self.config = manager, manager.config
-        self.credentials = Credentials(self.config)
+        self.credentials = Credentials(self.config, definitions=lambda: self.manager.executor.settings.credential_definitions()
+            if hasattr(self.manager, "executor") else {})
         self.path = self.config.data_dir / "downloads.json"
         self.jobs, self.tasks, self.processes, self.verified = {}, {}, {}, {}
         self.closed = False

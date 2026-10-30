@@ -11,6 +11,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from controller.config import ControllerConfig
+from controller.executor.config import ExecutorSettings
 from controller.profiles import ConfigurationUpdate, VoiceConfiguration
 from controller.providers import PROVIDERS
 
@@ -34,6 +35,8 @@ SETTINGS = {
     "bits": 4,
 }
 PROFILES = VoiceConfiguration().document()
+EXECUTOR = ExecutorSettings().model_dump()
+CONNECTIONS = []
 PREVIEW_CONFIG = ControllerConfig(
     data_dir=ROOT.parents[1] / ".tmp" / "preview",
     weights_dir=ROOT.parents[1] / ".tmp" / "preview" / "weights",
@@ -101,6 +104,8 @@ class Preview(SimpleHTTPRequestHandler):
                 "providers": [provider.describe(PREVIEW_CONFIG) for provider in PROVIDERS.values()],
             },
             "/api/voice/v1/settings": PROFILES,
+            "/api/voice/v1/executor/settings": EXECUTOR,
+            "/api/voice/v1/executor/connections": {"connections": CONNECTIONS},
             "/api/voice/v1/models": {"models": list(MODELS.values())},
             "/api/voice/v1/downloads": {"jobs": JOBS},
             "/api/voice/v1/credentials": {"services": [CREDENTIAL]},
@@ -124,6 +129,19 @@ class Preview(SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
+        if self.path == "/api/voice/v1/executor/test":
+            self.json({"models": ["fixture-executor"], "selectedModelAvailable": EXECUTOR["llm"]["model"] == "fixture-executor", "message": "Fixture endpoint reachable; no tool executed."})
+            return
+        if self.path.startswith("/api/voice/v1/executor/connections/"):
+            connection_id, action = self.path.split("/")[-2:]
+            profile = next(item for item in EXECUTOR["connections"] if item["id"] == connection_id)
+            CONNECTIONS[:] = [item for item in CONNECTIONS if item["id"] != connection_id]
+            if action != "disconnect":
+                CONNECTIONS.append({"id": connection_id, "name": profile["name"], "connected": True,
+                    "identity": "fixture-catalogue", "server": {"name": "Generic fixture", "version": "1"},
+                    "tools": [{"name": "search.anything", "title": "Search anything", "supported": True}]})
+            self.json({"connections": CONNECTIONS})
+            return
         if self.path.endswith("/open-folder"):
             self.json({"message": "Folder opened in Finder on the controller Mac."})
             return
@@ -186,6 +204,16 @@ class Preview(SimpleHTTPRequestHandler):
         self.json(STATE)
 
     def do_PUT(self):
+        if self.path == "/api/voice/v1/executor/settings":
+            value = ExecutorSettings.model_validate_json(self.rfile.read(int(self.headers["Content-Length"])))
+            if value.revision != EXECUTOR["revision"]:
+                self.json({"error": "Executor settings changed. Reload before saving."}, 409)
+                return
+            EXECUTOR.update(value.model_dump())
+            EXECUTOR["revision"] += 1
+            CONNECTIONS.clear()
+            self.json(EXECUTOR)
+            return
         if self.path == "/api/voice/v1/credentials/huggingface":
             self.rfile.read(int(self.headers["Content-Length"]))  # Never retain even fixture tokens.
             CREDENTIAL.update(configured=True, test=None)
