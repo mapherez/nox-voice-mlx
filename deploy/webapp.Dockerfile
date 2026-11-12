@@ -1,6 +1,6 @@
 # The webapp image deliberately never installs or copies the native Mac engine.
 # Build static browser assets natively; keep Vite+ checks out of QEMU.
-FROM --platform=$BUILDPLATFORM node:24.22.1-bookworm-slim AS frontend
+FROM --platform=$BUILDPLATFORM node:26-bookworm-slim AS frontend
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json frontend/.node-version ./
 RUN npm ci --no-audit --no-fund
