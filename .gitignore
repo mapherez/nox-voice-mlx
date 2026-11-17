@@ -60,3 +60,9 @@ secrets/
 .tmp/
 .coverage
 *.egg-info/
+
+# Shared Vite+ editor configuration.
+!frontend/.vscode/
+frontend/.vscode/*
+!frontend/.vscode/settings.json
+!frontend/.vscode/extensions.json

@@ -1,0 +1,25 @@
+{
+  "workflow": "webapp.yaml",
+  "marker": "nox-voice-mlx-Release:",
+  "branch": "main",
+  "files": [
+    {
+      "path": "package.json",
+      "fields": [
+        [
+          "version"
+        ]
+      ]
+    },
+    {
+      "path": "pyproject.toml",
+      "section": "project",
+      "name": "nox-voice-development"
+    },
+    {
+      "path": "uv.lock",
+      "section": "[[package]]",
+      "name": "nox-voice-development"
+    }
+  ]
+}

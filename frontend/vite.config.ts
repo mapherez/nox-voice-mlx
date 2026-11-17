@@ -3,8 +3,23 @@ import { readFileSync } from "node:fs";
 import { defineConfig, lazyPlugins } from "vite-plus";
 
 export default defineConfig({
+  staged: { "*": "vp check --fix" },
   lint: {
-    ignorePatterns: ["node_modules/**", "dist/**", ".vite/**", ".vitest/**"],
+    ignorePatterns: [
+      "node_modules/**",
+      "dist/**",
+      ".vite/**",
+      ".vitest/**",
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/target/**",
+      "**/vendor/**",
+      "**/*.md",
+      "**/*.mdx",
+      "**/package-lock.json",
+      "**/pnpm-lock.yaml",
+    ],
     plugins: ["typescript", "unicorn", "oxc", "react", "jsx-a11y"],
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
     rules: {
@@ -20,6 +35,10 @@ export default defineConfig({
     options: { typeAware: true, typeCheck: true },
   },
   fmt: {
+    insertFinalNewline: true,
+    endOfLine: "lf",
+    useTabs: false,
+    tabWidth: 2,
     printWidth: 80,
     bracketSameLine: true,
     sortPackageJson: false,
@@ -32,7 +51,21 @@ export default defineConfig({
         },
       },
     ],
-    ignorePatterns: ["dist/**", "node_modules/**", ".vite/**", ".vitest/**"],
+    ignorePatterns: [
+      "dist/**",
+      "node_modules/**",
+      ".vite/**",
+      ".vitest/**",
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/target/**",
+      "**/vendor/**",
+      "**/*.md",
+      "**/*.mdx",
+      "**/package-lock.json",
+      "**/pnpm-lock.yaml",
+    ],
   },
   plugins: lazyPlugins(() => [
     react(),
