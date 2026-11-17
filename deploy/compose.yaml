@@ -37,7 +37,7 @@ services:
       - "127.0.0.1:${NOX_VOICE_WEB_PORT:-8080}:8080"
     logging:
       driver: json-file
-      options: {max-size: 5m, max-file: "2"}
+      options: { max-size: 5m, max-file: "2" }
 
   cloudflared:
     image: cloudflare/cloudflared:2026.10.4
@@ -52,7 +52,7 @@ services:
         condition: service_healthy
     logging:
       driver: json-file
-      options: {max-size: 5m, max-file: "2"}
+      options: { max-size: 5m, max-file: "2" }
 
 networks:
   voice:

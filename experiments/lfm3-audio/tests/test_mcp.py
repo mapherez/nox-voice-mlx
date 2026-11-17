@@ -11,15 +11,22 @@ from mcp_fixture import TOOLS, MCPFixture
 class MCPTransport(unittest.TestCase):
     def test_json_and_sse_negotiate_stateful_and_stateless_sessions_with_pagination(self):
         for sse, stateful in [(False, True), (True, True), (True, False)]:
-            with self.subTest(sse=sse, stateful=stateful), MCPFixture(sse=sse, stateful=stateful) as fixture:
+            with (
+                self.subTest(sse=sse, stateful=stateful),
+                MCPFixture(sse=sse, stateful=stateful) as fixture,
+            ):
                 client = MCPClient(fixture.url).connect()
                 try:
                     self.assertEqual(client.version, "2025-06-18")
-                    self.assertEqual([tool["name"] for tool in client.tools], ["list_notes", "create_note"])
+                    self.assertEqual(
+                        [tool["name"] for tool in client.tools], ["list_notes", "create_note"]
+                    )
                     initialized, headers = fixture.requests[1]
                     self.assertEqual(initialized["method"], "notifications/initialized")
                     self.assertEqual(headers["MCP-Protocol-Version"], "2025-06-18")
-                    result = client.call("create_note", {"title": "Test", "content": "Only in fixture memory"})
+                    result = client.call(
+                        "create_note", {"title": "Test", "content": "Only in fixture memory"}
+                    )
                     self.assertEqual(result["structuredContent"]["id"], "1")
                     self.assertEqual(len(fixture.notes), 1)
                 finally:
@@ -27,8 +34,14 @@ class MCPTransport(unittest.TestCase):
                 self.assertEqual(fixture.deleted, int(stateful))
 
     def test_no_non_http_urls_credentials_fragments_or_invalid_ports(self):
-        for url in ["file:///etc/passwd", "http://user:pass@localhost/mcp", "http://localhost/mcp#fragment",
-                    "http://localhost:invalid/mcp", "http://local host/mcp", None]:
+        for url in [
+            "file:///etc/passwd",
+            "http://user:pass@localhost/mcp",
+            "http://localhost/mcp#fragment",
+            "http://localhost:invalid/mcp",
+            "http://local host/mcp",
+            None,
+        ]:
             with self.subTest(url=url), self.assertRaises(MCPError):
                 endpoint(url)
 
@@ -63,13 +76,28 @@ class MCPExecutions(unittest.TestCase):
             manager = MCPManager()
             try:
                 profile = manager.connect(fixture.url)
-                first = manager.execute(profile["id"], "voice:call1", "create_note", {"title": "Test", "content": "hello"})
-                again = manager.execute(profile["id"], "voice:call1", "create_note", {"title": "Test", "content": "hello"})
+                first = manager.execute(
+                    profile["id"],
+                    "voice:call1",
+                    "create_note",
+                    {"title": "Test", "content": "hello"},
+                )
+                again = manager.execute(
+                    profile["id"],
+                    "voice:call1",
+                    "create_note",
+                    {"title": "Test", "content": "hello"},
+                )
                 self.assertEqual(first, again)
                 self.assertFalse(first["isError"])
                 self.assertEqual(len(fixture.calls), 1)
                 with self.assertRaises(MCPError):
-                    manager.execute(profile["id"], "voice:call1", "create_note", {"title": "Different", "content": "hello"})
+                    manager.execute(
+                        profile["id"],
+                        "voice:call1",
+                        "create_note",
+                        {"title": "Different", "content": "hello"},
+                    )
             finally:
                 manager.close()
 
@@ -78,10 +106,20 @@ class MCPExecutions(unittest.TestCase):
             manager = MCPManager()
             try:
                 profile = manager.connect(fixture.url)
-                first = manager.execute(profile["id"], "uncertain", "create_note", {"title": "Test", "content": "hello"})
+                first = manager.execute(
+                    profile["id"], "uncertain", "create_note", {"title": "Test", "content": "hello"}
+                )
                 self.assertTrue(first["isError"])
                 self.assertTrue(first["uncertain"])
-                self.assertEqual(first, manager.execute(profile["id"], "uncertain", "create_note", {"title": "Test", "content": "hello"}))
+                self.assertEqual(
+                    first,
+                    manager.execute(
+                        profile["id"],
+                        "uncertain",
+                        "create_note",
+                        {"title": "Test", "content": "hello"},
+                    ),
+                )
                 self.assertEqual(len(fixture.calls), 1)
             finally:
                 manager.close()
@@ -104,7 +142,9 @@ class MCPExecutions(unittest.TestCase):
             manager = MCPManager()
             try:
                 profile = manager.connect(fixture.url)
-                result = manager.execute(profile["id"], "bad-args", "create_note", {"title": "Missing content"})
+                result = manager.execute(
+                    profile["id"], "bad-args", "create_note", {"title": "Missing content"}
+                )
                 self.assertTrue(result["isError"])
                 self.assertFalse(result["uncertain"])
                 self.assertEqual(fixture.notes, [])
@@ -134,14 +174,24 @@ class MCPHttp(unittest.TestCase):
 
             try:
                 self.assertEqual(post("/api/mcp/connect", {"url": fixture.url})[0], 403)
-                self.assertEqual(post("/api/mcp/connect", {"url": fixture.url}, "https://foreign.test")[0], 403)
+                self.assertEqual(
+                    post("/api/mcp/connect", {"url": fixture.url}, "https://foreign.test")[0], 403
+                )
                 self.assertEqual(fixture.requests, [])
                 origin = "http://127.0.0.1:" + str(port)
                 status, profile = post("/api/mcp/connect", {"url": fixture.url}, origin)
                 self.assertEqual(status, 200)
                 self.assertTrue(profile["connected"])
-                status, result = post("/api/mcp/call", {"connectionId": profile["id"], "invocationId": "http-call",
-                                                       "name": "list_notes", "arguments": {}}, origin)
+                status, result = post(
+                    "/api/mcp/call",
+                    {
+                        "connectionId": profile["id"],
+                        "invocationId": "http-call",
+                        "name": "list_notes",
+                        "arguments": {},
+                    },
+                    origin,
+                )
                 self.assertEqual(status, 200)
                 self.assertFalse(result["isError"])
                 self.assertEqual(post("/api/mcp/disconnect", {}, origin)[0], 200)

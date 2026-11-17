@@ -23,7 +23,8 @@ export function VoiceOrb() {
       className="orb-stage"
       id="orb-stage"
       role="img"
-      aria-label="Decorative 3D sphere. It responds only to the assistant's audio.">
+      aria-label="Decorative 3D sphere. It responds only to the assistant's audio."
+    >
       <div className="orb-aura" aria-hidden="true" />
       <div className="orb-fallback" aria-hidden="true" />
       <canvas id="orb" ref={canvas} aria-hidden="true" />

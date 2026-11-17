@@ -74,7 +74,9 @@ class Controller:
             self._ssl = context
         return self._ssl
 
-    async def request(self, method: str, path: str, payload=None, timeout=8, owner=None) -> tuple[int, dict]:
+    async def request(
+        self, method: str, path: str, payload=None, timeout=8, owner=None
+    ) -> tuple[int, dict]:
         if self._client is None:
             self._client = httpx.AsyncClient(
                 base_url=self.config.controller_url,
@@ -83,8 +85,13 @@ class Controller:
                 trust_env=False,
             )
         try:
-            response = await self._client.request(method, path, json=payload, timeout=timeout,
-                headers={"X-NoX-Session-Owner": owner} if owner else None)
+            response = await self._client.request(
+                method,
+                path,
+                json=payload,
+                timeout=timeout,
+                headers={"X-NoX-Session-Owner": owner} if owner else None,
+            )
             value = response.json()
             if not isinstance(value, dict):
                 raise ValueError("Unexpected controller response")

@@ -23,8 +23,14 @@ ACTIVE = {"queued", "resolving", "downloading", "verifying", "extracting", "canc
 class ModelLibrary:
     def __init__(self, manager):
         self.manager, self.config = manager, manager.config
-        self.credentials = Credentials(self.config, definitions=lambda: self.manager.executor.settings.credential_definitions()
-            if hasattr(self.manager, "executor") else {})
+        self.credentials = Credentials(
+            self.config,
+            definitions=lambda: (
+                self.manager.executor.settings.credential_definitions()
+                if hasattr(self.manager, "executor")
+                else {}
+            ),
+        )
         self.path = self.config.data_dir / "downloads.json"
         self.jobs, self.tasks, self.processes, self.verified = {}, {}, {}, {}
         self.closed = False
@@ -34,8 +40,11 @@ class ModelLibrary:
                 if job.get("provider") not in PROVIDERS:
                     continue
                 if job.get("state") in ACTIVE:
-                    job.update(state="interrupted", bytesPerSecond=0,
-                        error="Controller stopped. Retry to resume the download.")
+                    job.update(
+                        state="interrupted",
+                        bytesPerSecond=0,
+                        error="Controller stopped. Retry to resume the download.",
+                    )
                 self.jobs[job["id"]] = job
 
     def save(self, force=False):
@@ -47,8 +56,11 @@ class ModelLibrary:
         return {"jobs": list(self.jobs.values())}
 
     def clear_finished(self):
-        remaining = {key: job for key, job in self.jobs.items()
-            if job["state"] in ACTIVE or key in self.tasks}
+        remaining = {
+            key: job
+            for key, job in self.jobs.items()
+            if job["state"] in ACTIVE or key in self.tasks
+        }
         if len(remaining) != len(self.jobs):
             previous = self.jobs
             self.jobs = remaining
@@ -56,21 +68,41 @@ class ModelLibrary:
                 self.save(True)
             except OSError:
                 self.jobs = previous
-                raise HTTPException(503, "Could not clear download history on the Mac. Check free space and folder permissions, then retry.") from None
+                raise HTTPException(
+                    503,
+                    "Could not clear download history on the Mac. Check free space and folder permissions, then retry.",
+                ) from None
         return self.snapshot()
 
     def busy(self, provider_id):
-        return any(job["provider"] == provider_id and job["state"] in ACTIVE for job in self.jobs.values())
+        return any(
+            job["provider"] == provider_id and job["state"] in ACTIVE for job in self.jobs.values()
+        )
 
     def signature(self, adapter):
         root = adapter.assets_dir(self.config)
         if not root.exists():
             return ()
-        files = [root / "installed.json", *list((root / "models").glob("*.gguf")),
-            *list((root / "runtime").rglob("*"))] if adapter.id == "lfm3-audio" else [
-            root / "manifest.json", *list(root.glob("*.safetensors")),
-            root / "voices.tgz", root / "tokenizer_spm_32k_3.model", *list((root / "voices_cpu").glob("*.pt"))]
-        return tuple((str(file), file.stat().st_size, file.stat().st_mtime_ns) for file in files if file.is_file())
+        files = (
+            [
+                root / "installed.json",
+                *list((root / "models").glob("*.gguf")),
+                *list((root / "runtime").rglob("*")),
+            ]
+            if adapter.id == "lfm3-audio"
+            else [
+                root / "manifest.json",
+                *list(root.glob("*.safetensors")),
+                root / "voices.tgz",
+                root / "tokenizer_spm_32k_3.model",
+                *list((root / "voices_cpu").glob("*.pt")),
+            ]
+        )
+        return tuple(
+            (str(file), file.stat().st_size, file.stat().st_mtime_ns)
+            for file in files
+            if file.is_file()
+        )
 
     def models(self):
         values = []
@@ -78,11 +110,17 @@ class ModelLibrary:
             root = adapter.assets_dir(self.config)
             missing = adapter.missing_assets(self.config)
             data = artifact_manifest()
-            revision, total, approximate = data["revision"], sum(item["size"] for item in data["files"]), False
+            revision, total, approximate = (
+                data["revision"],
+                sum(item["size"] for item in data["files"]),
+                False,
+            )
             if adapter.id == "lfm3-audio":
                 manifest = assets.manifest()
                 revision = manifest["model"]["revision"]
-                total = manifest["runtime"]["size"] + sum(item["size"] for item in manifest["model"]["files"])
+                total = manifest["runtime"]["size"] + sum(
+                    item["size"] for item in manifest["model"]["files"]
+                )
                 approximate = False
             else:
                 with suppress(OSError, ValueError, KeyError, TypeError):
@@ -91,41 +129,87 @@ class ModelLibrary:
                     total = sum(item["size"] for item in data["files"])
                     approximate = False
                 with suppress(OSError, ValueError):
-                    revision = json.loads((root / "manifest.json").read_text()).get("revision") or revision
+                    revision = (
+                        json.loads((root / "manifest.json").read_text()).get("revision") or revision
+                    )
             verified = not missing and (
                 self.verified.get(adapter.id) == self.signature(adapter)
-                or self.manager.running_provider == adapter.id and self.manager.state == "ready")
-            values.append({"id": adapter.id, "name": adapter.name, "source": f"https://huggingface.co/{adapter.model_id}",
-                "runtime": adapter.runtime, "revision": revision, "directory": str(root.resolve()),
-                "downloadBytes": total, "sizeApproximate": approximate,
-                "credentialService": "huggingface" if adapter.id == "personaplex" else None,
-                "localState": "verified" if verified else "present" if not missing else "not_downloaded",
-                "loaded": self.manager.running_provider == adapter.id and self.manager.state == "ready",
-                "missingCount": len(missing)})
+                or self.manager.running_provider == adapter.id
+                and self.manager.state == "ready"
+            )
+            values.append(
+                {
+                    "id": adapter.id,
+                    "name": adapter.name,
+                    "source": f"https://huggingface.co/{adapter.model_id}",
+                    "runtime": adapter.runtime,
+                    "revision": revision,
+                    "directory": str(root.resolve()),
+                    "downloadBytes": total,
+                    "sizeApproximate": approximate,
+                    "credentialService": "huggingface" if adapter.id == "personaplex" else None,
+                    "localState": "verified"
+                    if verified
+                    else "present"
+                    if not missing
+                    else "not_downloaded",
+                    "loaded": self.manager.running_provider == adapter.id
+                    and self.manager.state == "ready",
+                    "missingCount": len(missing),
+                }
+            )
         return {"models": values}
 
     async def download(self, provider_id):
         if self.closed:
             raise HTTPException(503, "The controller is shutting down.")
         adapter = provider(provider_id)
-        if not adapter.assets_dir(self.config).resolve().is_relative_to(self.config.weights_dir.resolve()):
-            raise HTTPException(422, "The model directory must stay inside the configured weights root.")
+        if (
+            not adapter.assets_dir(self.config)
+            .resolve()
+            .is_relative_to(self.config.weights_dir.resolve())
+        ):
+            raise HTTPException(
+                422, "The model directory must stay inside the configured weights root."
+            )
         if self.busy(provider_id):
-            return next(job for job in self.jobs.values() if job["provider"] == provider_id and job["state"] in ACTIVE)
-        if self.manager.running_provider == provider_id and self.manager.process and self.manager.process.returncode is None:
+            return next(
+                job
+                for job in self.jobs.values()
+                if job["provider"] == provider_id and job["state"] in ACTIVE
+            )
+        if (
+            self.manager.running_provider == provider_id
+            and self.manager.process
+            and self.manager.process.returncode is None
+        ):
             raise HTTPException(409, "Eject this model before downloading or repairing its files.")
         if self.manager.preparation_process is not None:
             raise HTTPException(409, "Wait for the current model preparation to finish.")
         if provider_id == "personaplex" and not self.credentials.secret("huggingface"):
-            raise HTTPException(422, "Add a Hugging Face token in Credentials before downloading PersonaPlex.")
+            raise HTTPException(
+                422, "Add a Hugging Face token in Credentials before downloading PersonaPlex."
+            )
         while len(self.jobs) >= 20:
-            oldest = next((key for key, item in self.jobs.items() if item["state"] not in ACTIVE), None)
+            oldest = next(
+                (key for key, item in self.jobs.items() if item["state"] not in ACTIVE), None
+            )
             if oldest is None:
                 raise HTTPException(409, "The download queue is full.")
             del self.jobs[oldest]
-        job = {"id": secrets.token_hex(12), "provider": provider_id, "name": adapter.name,
-            "state": "queued", "createdAt": time.time(), "files": [], "downloadedBytes": 0,
-            "totalBytes": 0, "bytesPerSecond": 0, "error": None, "code": None}
+        job = {
+            "id": secrets.token_hex(12),
+            "provider": provider_id,
+            "name": adapter.name,
+            "state": "queued",
+            "createdAt": time.time(),
+            "files": [],
+            "downloadedBytes": 0,
+            "totalBytes": 0,
+            "bytesPerSecond": 0,
+            "error": None,
+            "code": None,
+        }
         self.jobs[job["id"]] = job
         self.verified.pop(provider_id, None)
         self.save(True)
@@ -139,11 +223,21 @@ class ModelLibrary:
             job["state"] = "resolving"
             adapter = provider(job["provider"])
             token = self.credentials.secret("huggingface") if adapter.id == "personaplex" else None
-            process = await asyncio.create_subprocess_exec(sys.executable, "-m", "controller.download_worker",
-                "--provider", adapter.id, "--root", str(adapter.assets_dir(self.config).resolve()), cwd=MAC_ROOT,
+            process = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-m",
+                "controller.download_worker",
+                "--provider",
+                adapter.id,
+                "--root",
+                str(adapter.assets_dir(self.config).resolve()),
+                cwd=MAC_ROOT,
                 env={"PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8", "PYTHONUNBUFFERED": "1"},
-                stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
-                limit=65536)
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+                limit=65536,
+            )
             self.processes[key] = process
             process.stdin.write(json.dumps({"token": token}).encode() + b"\n")
             await process.stdin.drain()
@@ -158,7 +252,10 @@ class ModelLibrary:
                     if phase == "complete":
                         complete = True
                     if phase == "error":
-                        job.update(error=str(event.get("error", "Download failed."))[:500], code=event.get("code"))
+                        job.update(
+                            error=str(event.get("error", "Download failed."))[:500],
+                            code=event.get("code"),
+                        )
                     for field in ("downloadedBytes", "totalBytes", "bytesPerSecond"):
                         value = event.get(field)
                         if isinstance(value, (int, float)) and math.isfinite(value) and value >= 0:
@@ -173,14 +270,24 @@ class ModelLibrary:
                 self.verified[adapter.id] = self.signature(adapter)
                 job.update(state="completed", bytesPerSecond=0)
             else:
-                job.update(state="failed", bytesPerSecond=0,
-                    error=job["error"] or "Download interrupted. Retry to resume it.")
+                job.update(
+                    state="failed",
+                    bytesPerSecond=0,
+                    error=job["error"] or "Download interrupted. Retry to resume it.",
+                )
         except asyncio.CancelledError:
-            job.update(state="interrupted" if self.closed else "cancelled", bytesPerSecond=0,
-                error="Controller stopped. Retry to resume." if self.closed else None)
+            job.update(
+                state="interrupted" if self.closed else "cancelled",
+                bytesPerSecond=0,
+                error="Controller stopped. Retry to resume." if self.closed else None,
+            )
             raise
         except (OSError, ValueError, RuntimeError):
-            job.update(state="failed", bytesPerSecond=0, error="Could not prepare the model. Check the native installation and retry.")
+            job.update(
+                state="failed",
+                bytesPerSecond=0,
+                error="Could not prepare the model. Check the native installation and retry.",
+            )
         finally:
             if process is not None and process.returncode is None:
                 with suppress(ProcessLookupError):
@@ -219,12 +326,27 @@ class ModelLibrary:
     async def open_folder(self, provider_id):
         root = provider(provider_id).assets_dir(self.config)
         if not root.resolve().is_relative_to(self.config.weights_dir.resolve()):
-            raise HTTPException(422, "The model folder must stay inside the configured weights directory.")
-        if sys.platform != "darwin" or os.stat("/dev/console").st_uid != os.getuid() or os.getuid() == 0:
-            raise HTTPException(409, "Finder requires a graphical login on the controller Mac. Sign in on that Mac and try again.")
+            raise HTTPException(
+                422, "The model folder must stay inside the configured weights directory."
+            )
+        if (
+            sys.platform != "darwin"
+            or os.stat("/dev/console").st_uid != os.getuid()
+            or os.getuid() == 0
+        ):
+            raise HTTPException(
+                409,
+                "Finder requires a graphical login on the controller Mac. Sign in on that Mac and try again.",
+            )
         root.mkdir(parents=True, exist_ok=True)
-        process = await asyncio.create_subprocess_exec("/usr/bin/open", "-a", "Finder", str(root.resolve()),
-            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+        process = await asyncio.create_subprocess_exec(
+            "/usr/bin/open",
+            "-a",
+            "Finder",
+            str(root.resolve()),
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
         try:
             code = await asyncio.wait_for(process.wait(), 5)
         except TimeoutError:
@@ -232,7 +354,10 @@ class ModelLibrary:
             await process.wait()
             code = 1
         if code:
-            raise HTTPException(409, "Finder could not open the folder. Check the graphical login on the controller Mac.")
+            raise HTTPException(
+                409,
+                "Finder could not open the folder. Check the graphical login on the controller Mac.",
+            )
         return {"message": "Folder opened in Finder on the controller Mac."}
 
     async def close(self):
@@ -243,6 +368,10 @@ class ModelLibrary:
         self.tasks.clear()
         for job in self.jobs.values():
             if job["state"] in ACTIVE:
-                job.update(state="interrupted", bytesPerSecond=0, error="Controller stopped. Retry to resume.")
+                job.update(
+                    state="interrupted",
+                    bytesPerSecond=0,
+                    error="Controller stopped. Retry to resume.",
+                )
         if self.jobs:
             self.save(True)

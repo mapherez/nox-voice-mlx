@@ -9,9 +9,13 @@ from .protocol import ExecutionError
 
 
 def summary(task):
-    return {key: value for key, value in task.items() if key not in {"steps", "transcript", "output"}} | {
-        "transcript": task["transcript"][:1000], "output": task["output"][:4000],
-        "stepCount": len(task["steps"])}
+    return {
+        key: value for key, value in task.items() if key not in {"steps", "transcript", "output"}
+    } | {
+        "transcript": task["transcript"][:1000],
+        "output": task["output"][:4000],
+        "stepCount": len(task["steps"]),
+    }
 
 
 class TaskBridge:
@@ -36,7 +40,9 @@ class TaskBridge:
                     self.store.closed = True
 
     async def publish(self, task):
-        await self.emit({"type": "task.updated", "sessionId": task["sessionId"], "task": summary(task)})
+        await self.emit(
+            {"type": "task.updated", "sessionId": task["sessionId"], "task": summary(task)}
+        )
 
     async def worker(self, value):
         if value.get("type") == "session.ready":
@@ -46,14 +52,27 @@ class TaskBridge:
         if value.get("type") == "turn.started":
             self.turn = value["turnId"]
         await self.emit(value)
-        if value.get("type") == "transcript.completed" and self.store and value.get("turnId") == self.turn:
+        if (
+            value.get("type") == "transcript.completed"
+            and self.store
+            and value.get("turnId") == self.turn
+        ):
             try:
-                task = self.manager.executor.admit(self.store, self.turn, value.get("text", ""), self.revision, self.publish)
+                task = self.manager.executor.admit(
+                    self.store, self.turn, value.get("text", ""), self.revision, self.publish
+                )
                 if task:
                     await self.publish(task)
             except ExecutionError as error:
-                await self.emit({"type": "error", "sessionId": self.store.session_id,
-                    "turnId": self.turn, "code": "EXECUTOR_UNAVAILABLE", "message": str(error)})
+                await self.emit(
+                    {
+                        "type": "error",
+                        "sessionId": self.store.session_id,
+                        "turnId": self.turn,
+                        "code": "EXECUTOR_UNAVAILABLE",
+                        "message": str(error),
+                    }
+                )
 
     async def control(self, value):
         kind = value.get("type", "")
@@ -64,7 +83,11 @@ class TaskBridge:
         if kind == "task.list" and set(value) == {"type", "sessionId"}:
             for task in self.store.tasks.values():
                 await self.publish(task)
-        elif kind == "task.cancel" and set(value) == {"type", "sessionId", "taskId"} and isinstance(value["taskId"], str):
+        elif (
+            kind == "task.cancel"
+            and set(value) == {"type", "sessionId", "taskId"}
+            and isinstance(value["taskId"], str)
+        ):
             try:
                 task = await self.manager.executor.cancel(self.store, value["taskId"])
                 await self.publish(task)

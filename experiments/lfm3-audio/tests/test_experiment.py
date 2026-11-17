@@ -98,17 +98,24 @@ class PathsAndDownloads(unittest.TestCase):
         return archive, destination
 
     def test_archive_rejects_escape_paths_links_and_writes_through_links(self):
-        for entries in [[("../escape", None)], [("link", "../../escape")],
-                        [("folder", "target"), ("folder/bin", None)]]:
+        for entries in [
+            [("../escape", None)],
+            [("link", "../../escape")],
+            [("folder", "target"), ("folder/bin", None)],
+        ]:
             with self.subTest(entries=entries):
                 archive, destination = self.archive(entries)
                 with self.assertRaises(ValueError):
                     experiment.extract_runtime(archive, destination)
 
     def test_runtime_extracts_local_libraries_and_executable(self):
-        archive, destination = self.archive([
-            ("bundle/llama-server", None), ("bundle/lib.1.dylib", None),
-            ("bundle/lib.dylib", "lib.1.dylib")])
+        archive, destination = self.archive(
+            [
+                ("bundle/llama-server", None),
+                ("bundle/lib.1.dylib", None),
+                ("bundle/lib.dylib", "lib.1.dylib"),
+            ]
+        )
         experiment.extract_runtime(archive, destination)
         self.assertEqual((destination / "bundle/lib.dylib").read_bytes(), b"bin")
         self.assertTrue(os.access(destination / "bundle/llama-server", os.X_OK))
@@ -128,8 +135,9 @@ class RuntimeHandler(socketserver.BaseRequestHandler):
                 return
             header.extend(byte)
         self.server.received = header.decode()
-        self.request.sendall(b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
-                             b"Connection: Upgrade\r\n\r\n")
+        self.request.sendall(
+            b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n"
+        )
         data = self.request.recv(100)
         if data:
             self.request.sendall(data)
@@ -141,7 +149,11 @@ class RestartLifecycle(unittest.TestCase):
             allow_reuse_address = False
 
         # On the supported platform, also test upgrading from the previous setting.
-        classes = [PreviousServer, experiment.LocalServer] if platform.system() == "Darwin" else [experiment.LocalServer]
+        classes = (
+            [PreviousServer, experiment.LocalServer]
+            if platform.system() == "Darwin"
+            else [experiment.LocalServer]
+        )
         for first_class in classes:
             with self.subTest(previous=first_class.__name__):
                 server = first_class(("127.0.0.1", 0), 1, "test-only")
@@ -177,7 +189,9 @@ class HttpBoundary(unittest.TestCase):
         self.runtime.received = None
         self.runtime_thread = threading.Thread(target=self.runtime.serve_forever, daemon=True)
         self.runtime_thread.start()
-        self.server = experiment.LocalServer(("127.0.0.1", 0), self.runtime.server_address[1], "ephemeral-test-key")
+        self.server = experiment.LocalServer(
+            ("127.0.0.1", 0), self.runtime.server_address[1], "ephemeral-test-key"
+        )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.port = self.server.server_port
@@ -206,7 +220,12 @@ class HttpBoundary(unittest.TestCase):
         self.assertIn(b"Hold Space", content)
         self.assertEqual(headers["Cache-Control"], "no-store")
         self.assertIn("frame-ancestors 'none'", headers["Content-Security-Policy"])
-        for path in ["/artifacts.json", "/../experiment.py", "/models/model.gguf", "/v1/chat/completions"]:
+        for path in [
+            "/artifacts.json",
+            "/../experiment.py",
+            "/models/model.gguf",
+            "/v1/chat/completions",
+        ]:
             self.assertEqual(self.request(path)[0], 404)
 
     def test_rejects_foreign_hosts_origins_and_unattributed_websockets(self):
@@ -217,10 +236,11 @@ class HttpBoundary(unittest.TestCase):
 
     def test_websocket_tunnel_uses_only_its_own_backend_and_closes(self):
         with socket.create_connection(("127.0.0.1", self.port), timeout=3) as client:
-            request = ("GET /realtime HTTP/1.1\r\nHost: localhost:{0}\r\n"
-                       "Origin: http://localhost:{0}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-                       "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {1}\r\n\r\n").format(
-                           self.port, base64.b64encode(b"test-16-byte-key").decode())
+            request = (
+                "GET /realtime HTTP/1.1\r\nHost: localhost:{0}\r\n"
+                "Origin: http://localhost:{0}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {1}\r\n\r\n"
+            ).format(self.port, base64.b64encode(b"test-16-byte-key").decode())
             client.sendall(request.encode())
             self.assertIn(b"101 Switching", client.recv(4096))
             client.sendall(b"test-frame")
@@ -229,7 +249,7 @@ class HttpBoundary(unittest.TestCase):
         for _ in range(100):
             if not self.server.connections:
                 break
-            threading.Event().wait(.01)
+            threading.Event().wait(0.01)
         self.assertEqual(self.server.connections, set())
 
 

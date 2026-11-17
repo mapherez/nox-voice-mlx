@@ -8,6 +8,7 @@ frontend/*
 !frontend/index.html
 !frontend/tsconfig.json
 !frontend/vite.config.ts
+!frontend/format-options.json
 !frontend/src/
 !frontend/src/**
 !gateway/

@@ -6,11 +6,21 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TOOLS = [
-    {"name": "list_notes", "description": "List all notes in the test app, including their IDs, titles and content.",
-     "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "create_note", "description": "Create a note in the test app with a title and content. Returns the created note and its ID.",
-     "inputSchema": {"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}},
-                     "required": ["title", "content"], "additionalProperties": False}},
+    {
+        "name": "list_notes",
+        "description": "List all notes in the test app, including their IDs, titles and content.",
+        "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "name": "create_note",
+        "description": "Create a note in the test app with a title and content. Returns the created note and its ID.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"title": {"type": "string"}, "content": {"type": "string"}},
+            "required": ["title", "content"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -23,8 +33,15 @@ class FixtureHandler(BaseHTTPRequestHandler):
     def reply(self, status, result=None, headers=None, sse=False):
         data = json.dumps(result).encode() if result is not None else b""
         if sse:
-            data = (b": fixture heartbeat\r\n\r\ndata: " + json.dumps({"jsonrpc": "2.0", "method": "notifications/tools/list_changed"}).encode()
-                    + b"\r\n\r\nevent: message\r\ndata: " + data + b"\r\n\r\n")
+            data = (
+                b": fixture heartbeat\r\n\r\ndata: "
+                + json.dumps(
+                    {"jsonrpc": "2.0", "method": "notifications/tools/list_changed"}
+                ).encode()
+                + b"\r\n\r\nevent: message\r\ndata: "
+                + data
+                + b"\r\n\r\n"
+            )
         self.send_response(status)
         self.send_header("Content-Type", "text/event-stream" if sse else "application/json")
         self.send_header("Content-Length", str(len(data)))
@@ -43,10 +60,16 @@ class FixtureHandler(BaseHTTPRequestHandler):
         fixture.requests.append((message, dict(self.headers)))
         method, params = message.get("method"), message.get("params", {})
         if method == "initialize":
-            result = {"protocolVersion": "2025-06-18", "serverInfo": {"name": fixture.name, "version": "1"},
-                      "capabilities": {"tools": {}}}
-            self.reply(200, {"jsonrpc": "2.0", "id": message["id"], "result": result},
-                       {"Mcp-Session-Id": "fixture-session"} if fixture.stateful else {})
+            result = {
+                "protocolVersion": "2025-06-18",
+                "serverInfo": {"name": fixture.name, "version": "1"},
+                "capabilities": {"tools": {}},
+            }
+            self.reply(
+                200,
+                {"jsonrpc": "2.0", "id": message["id"], "result": result},
+                {"Mcp-Session-Id": "fixture-session"} if fixture.stateful else {},
+            )
             return
         if fixture.stateful and self.headers.get("Mcp-Session-Id") != "fixture-session":
             self.reply(404)
@@ -69,24 +92,48 @@ class FixtureHandler(BaseHTTPRequestHandler):
                 self.close_connection = True
                 return
             if name == "list_notes":
-                result = {"content": [{"type": "text", "text": json.dumps(fixture.notes)}],
-                          "structuredContent": {"notes": fixture.notes.copy()}}
-            elif (name == "create_note" and set(arguments) == {"title", "content"}
-                    and all(isinstance(value, str) for value in arguments.values())):
+                result = {
+                    "content": [{"type": "text", "text": json.dumps(fixture.notes)}],
+                    "structuredContent": {"notes": fixture.notes.copy()},
+                }
+            elif (
+                name == "create_note"
+                and set(arguments) == {"title", "content"}
+                and all(isinstance(value, str) for value in arguments.values())
+            ):
                 note = {"id": str(len(fixture.notes) + 1), **arguments}
                 fixture.notes.append(note)
-                result = {"content": [{"type": "text", "text": json.dumps(note)}], "structuredContent": note}
+                result = {
+                    "content": [{"type": "text", "text": json.dumps(note)}],
+                    "structuredContent": note,
+                }
             else:
-                result = {"isError": True, "content": [{"type": "text", "text": "Invalid tool arguments."}]}
+                result = {
+                    "isError": True,
+                    "content": [{"type": "text", "text": "Invalid tool arguments."}],
+                }
         else:
-            self.reply(200, {"jsonrpc": "2.0", "id": message["id"],
-                             "error": {"code": -32601, "message": "Method not found."}})
+            self.reply(
+                200,
+                {
+                    "jsonrpc": "2.0",
+                    "id": message["id"],
+                    "error": {"code": -32601, "message": "Method not found."},
+                },
+            )
             return
         self.reply(200, {"jsonrpc": "2.0", "id": message["id"], "result": result}, sse=fixture.sse)
 
 
 class MCPFixture:
-    def __init__(self, sse=False, stateful=True, drop_after_call=False, custom_tools=None, name="Isolated MCP test app"):
+    def __init__(
+        self,
+        sse=False,
+        stateful=True,
+        drop_after_call=False,
+        custom_tools=None,
+        name="Isolated MCP test app",
+    ):
         self.sse, self.stateful, self.drop_after_call = sse, stateful, drop_after_call
         self.custom_tools = custom_tools
         self.name = name

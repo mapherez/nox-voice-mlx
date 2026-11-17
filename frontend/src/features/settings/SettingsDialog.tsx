@@ -23,7 +23,8 @@ export function SettingsDialog() {
       open={workspace.settingsOpen}
       onClose={runtime.closeSettings}
       dismissOutsideX
-      tab={workspace.tab}>
+      tab={workspace.tab}
+    >
       <header className="drawer-header" aria-label="Settings">
         {" "}
         <div>
@@ -36,7 +37,8 @@ export function SettingsDialog() {
           id="close-settings"
           className="icon-button"
           aria-label="Close settings"
-          onClick={runtime.closeSettings}>
+          onClick={runtime.closeSettings}
+        >
           {" "}
           <svg
             viewBox="0 0 24 24"
@@ -45,7 +47,8 @@ export function SettingsDialog() {
             strokeWidth="1.6"
             strokeLinecap="round"
             strokeLinejoin="round"
-            aria-hidden="true">
+            aria-hidden="true"
+          >
             {" "}
             <path d="m6 6 12 12M18 6 6 18" />{" "}
           </svg>{" "}

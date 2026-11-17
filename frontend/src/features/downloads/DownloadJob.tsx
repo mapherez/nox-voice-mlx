@@ -36,7 +36,8 @@ export function DownloadJob({ job }: { job: Job }) {
       {!!job.files.length && (
         <details
           open={expanded}
-          onToggle={(event) => setExpanded(event.currentTarget.open)}>
+          onToggle={(event) => setExpanded(event.currentTarget.open)}
+        >
           <summary>
             {job.files.filter((file) => file.state === "downloaded").length +
               " of " +
@@ -67,7 +68,8 @@ export function DownloadJob({ job }: { job: Job }) {
           }
           onClick={() => {
             void runtime.library.jobAction(job.id, action);
-          }}>
+          }}
+        >
           {action === "cancel" ? "Cancel download" : "Retry / resume"}
         </button>
       )}

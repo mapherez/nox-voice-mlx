@@ -156,7 +156,9 @@ async def test_stop_remains_available_during_long_reconfiguration(supervisor, mo
         await supervisor.close()
 
 
-async def test_shutdown_ejects_model_even_if_download_metadata_cannot_be_saved(supervisor, monkeypatch):
+async def test_shutdown_ejects_model_even_if_download_metadata_cannot_be_saved(
+    supervisor, monkeypatch
+):
     process = FakeProcess()
     supervisor.process, supervisor.state = process, "ready"
 

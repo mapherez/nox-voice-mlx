@@ -1,0 +1,20 @@
+{
+  "insertFinalNewline": true,
+  "endOfLine": "lf",
+  "useTabs": false,
+  "tabWidth": 2,
+  "sortPackageJson": false,
+  "printWidth": 80,
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/target/**",
+    "**/vendor/**",
+    "**/.venv/**",
+    "**/package-lock.json",
+    "**/pnpm-lock.yaml",
+    "**/Cargo.lock",
+    "**/uv.lock"
+  ]
+}

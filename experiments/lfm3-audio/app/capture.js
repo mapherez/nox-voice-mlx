@@ -19,12 +19,15 @@ class PushToTalkCapture extends AudioWorkletProcessor {
 
   emit(samples) {
     if (samples.length)
-      this.port.postMessage({ type: "audio", turn: this.turn, samples }, [samples.buffer]);
+      this.port.postMessage({ type: "audio", turn: this.turn, samples }, [
+        samples.buffer,
+      ]);
   }
 
   process(inputs) {
     if (this.encoder && inputs[0]?.[0])
-      for (const packet of this.encoder.process(inputs[0][0])) this.emit(packet);
+      for (const packet of this.encoder.process(inputs[0][0]))
+        this.emit(packet);
     return true;
   }
 }

@@ -18,8 +18,15 @@ def emit(**value):
 
 class Reporter:
     def __init__(self, files, token=None):
-        self.files = [{"name": item["name"], "totalBytes": item["size"], "downloadedBytes": 0,
-            "state": "pending"} for item in files]
+        self.files = [
+            {
+                "name": item["name"],
+                "totalBytes": item["size"],
+                "downloadedBytes": 0,
+                "state": "pending",
+            }
+            for item in files
+        ]
         self.token = token
         emit(phase="downloading", files=self.files, totalBytes=sum(item["size"] for item in files))
 
@@ -28,17 +35,24 @@ class Reporter:
 
         def progress(count, speed, state):
             file.update(downloadedBytes=count, state=state)
-            emit(phase="verifying" if state == "verifying" else "downloading", files=self.files,
+            emit(
+                phase="verifying" if state == "verifying" else "downloading",
+                files=self.files,
                 downloadedBytes=sum(item["downloadedBytes"] for item in self.files),
-                totalBytes=sum(item["totalBytes"] for item in self.files), bytesPerSecond=speed,
-                file=file["name"])
+                totalBytes=sum(item["totalBytes"] for item in self.files),
+                bytesPerSecond=speed,
+                file=file["name"],
+            )
 
         hub.download(url, destination, expected, progress, self.token)
 
 
 def personaplex(root, token):
     if not token:
-        raise hub.DownloadError("CREDENTIAL_REQUIRED", "Add a Hugging Face token in Credentials to download PersonaPlex.")
+        raise hub.DownloadError(
+            "CREDENTIAL_REQUIRED",
+            "Add a Hugging Face token in Credentials to download PersonaPlex.",
+        )
     plan_path = assets.contained(root, ".download-plan.json")
     for name in [*model_files.ASSETS, "voices_cpu", "manifest.json"]:
         assets.contained(root, name)
@@ -47,11 +61,17 @@ def personaplex(root, token):
     if plan_path.is_file():
         revision = json.loads(plan_path.read_text()).get("revision")
         if not hub.valid_revision(revision):
-            raise hub.DownloadError("METADATA", "Invalid saved download revision. Check the model directory.")
-    metadata = hub.hub_json(f"/api/models/{model_files.REPOSITORY}/revision/{revision}?blobs=true", token)
+            raise hub.DownloadError(
+                "METADATA", "Invalid saved download revision. Check the model directory."
+            )
+    metadata = hub.hub_json(
+        f"/api/models/{model_files.REPOSITORY}/revision/{revision}?blobs=true", token
+    )
     revision = metadata.get("sha")
     if not hub.valid_revision(revision):
-        raise hub.DownloadError("METADATA", "The model source did not provide an immutable revision.")
+        raise hub.DownloadError(
+            "METADATA", "The model source did not provide an immutable revision."
+        )
     records = {item["rfilename"]: item for item in metadata["siblings"]}
     files = []
     for name in model_files.ASSETS:
@@ -60,27 +80,50 @@ def personaplex(root, token):
         size = lfs.get("size", record.get("size"))
         sha = lfs.get("sha256")
         blob = record.get("blobId")
-        if not isinstance(size, int) or not 0 < size < 32 * 1024**3 or not (
-            isinstance(sha, str) and re.fullmatch(r"[a-f0-9]{64}", sha)
-            or isinstance(blob, str) and re.fullmatch(r"[a-f0-9]{40}", blob)
+        if (
+            not isinstance(size, int)
+            or not 0 < size < 32 * 1024**3
+            or not (
+                isinstance(sha, str)
+                and re.fullmatch(r"[a-f0-9]{64}", sha)
+                or isinstance(blob, str)
+                and re.fullmatch(r"[a-f0-9]{40}", blob)
+            )
         ):
-            raise hub.DownloadError("METADATA", "Missing size or checksum for an official model file.")
+            raise hub.DownloadError(
+                "METADATA", "Missing size or checksum for an official model file."
+            )
         files.append({"name": name, "size": size, "sha256": sha, "blobId": blob})
     if revision == pinned["revision"]:
         expected = {item["name"]: item for item in pinned["files"]}
-        if any(item["size"] != expected[item["name"]]["size"] or item["sha256"] != expected[item["name"]]["sha256"] for item in files):
-            raise hub.DownloadError("METADATA", "Official file metadata differs from the pinned model manifest. Download stopped.")
+        if any(
+            item["size"] != expected[item["name"]]["size"]
+            or item["sha256"] != expected[item["name"]]["sha256"]
+            for item in files
+        ):
+            raise hub.DownloadError(
+                "METADATA",
+                "Official file metadata differs from the pinned model manifest. Download stopped.",
+            )
     write_private(plan_path, json.dumps({"revision": revision, "files": files}))
     reporter = Reporter(files, token)
     for item in files:
-        reporter.download(f"{hub.HUB}/{model_files.REPOSITORY}/resolve/{revision}/{item['name']}", root / item["name"], item)
+        reporter.download(
+            f"{hub.HUB}/{model_files.REPOSITORY}/resolve/{revision}/{item['name']}",
+            root / item["name"],
+            item,
+        )
     emit(phase="extracting")
     model_files.extract_voices(root / "voices.tgz", root / "voices_cpu")
     emit(phase="verifying")
-    hashes = {name: model_files.digest(root / name) for name in
-        [*model_files.ASSETS, *[f"voices_cpu/{voice}.pt" for voice in VOICE_NAMES]]}
-    write_private(root / "manifest.json", json.dumps({"repository": model_files.REPOSITORY,
-        "revision": revision, "files": hashes}))
+    hashes = {
+        name: model_files.digest(root / name)
+        for name in [*model_files.ASSETS, *[f"voices_cpu/{voice}.pt" for voice in VOICE_NAMES]]
+    }
+    write_private(
+        root / "manifest.json",
+        json.dumps({"repository": model_files.REPOSITORY, "revision": revision, "files": hashes}),
+    )
     model_files.verify_model(root)
 
 
@@ -118,7 +161,11 @@ def main():
         emit(phase="error", code=error.code, error=str(error))
         sys.exit(1)
     except Exception:
-        emit(phase="error", code="PREPARATION", error="Could not prepare this model. Check network access, free disk space and model files, then retry.")
+        emit(
+            phase="error",
+            code="PREPARATION",
+            error="Could not prepare this model. Check network access, free disk space and model files, then retry.",
+        )
         sys.exit(1)
 
 

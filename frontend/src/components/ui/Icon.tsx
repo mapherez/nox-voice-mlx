@@ -22,7 +22,8 @@ export function Icon({
       strokeWidth={width}
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden="true">
+      aria-hidden="true"
+    >
       <path d={paths[name]} />
     </svg>
   );

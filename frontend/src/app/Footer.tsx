@@ -9,7 +9,8 @@ export function Footer() {
           fill="none"
           stroke="currentColor"
           strokeWidth="1.2"
-          aria-hidden="true">
+          aria-hidden="true"
+        >
           {" "}
           <rect x="3.5" y="7" width="9" height="7" rx="2" />{" "}
           <path d="M5 7V4a3 3 0 0 1 6 0v3" />{" "}

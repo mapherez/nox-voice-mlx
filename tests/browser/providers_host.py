@@ -34,7 +34,9 @@ def main():
             dev_log = (ROOT / ".tmp" / "react-dev-server.log").open("w")
             dev = subprocess.Popen(
                 ["npm", "run", "dev", "--", "--port", str(port)],
-                cwd=ROOT / "frontend", stdout=dev_log, stderr=subprocess.STDOUT,
+                cwd=ROOT / "frontend",
+                stdout=dev_log,
+                stderr=subprocess.STDOUT,
                 start_new_session=True,
             )
             frontend_url = f"http://127.0.0.1:{port}"
@@ -53,7 +55,8 @@ def main():
                 "tests/browser/providers.mjs",
                 sys.argv[1],
                 f"http://127.0.0.1:{server.server_port}",
-            ] + ([frontend_url] if frontend_url else []),
+            ]
+            + ([frontend_url] if frontend_url else []),
             cwd=ROOT,
             env={
                 "PATH": os.environ.get("PATH", "/usr/bin:/bin"),

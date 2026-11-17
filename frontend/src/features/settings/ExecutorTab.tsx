@@ -19,7 +19,8 @@ export function ExecutorTab() {
       id="panel-executor"
       role="tabpanel"
       aria-labelledby="tab-executor"
-      hidden={workspace.tab !== "executor"}>
+      hidden={workspace.tab !== "executor"}
+    >
       <h3>Executor &amp; MCP</h3>
       <p className="field-help">
         LFM3 uses your LLM for answers and connected tools for actions. End the
@@ -32,7 +33,8 @@ export function ExecutorTab() {
           className="button secondary"
           onClick={() => {
             void runtime.executor.load();
-          }}>
+          }}
+        >
           Load executor settings
         </button>
       ) : (
@@ -131,7 +133,8 @@ export function ExecutorTab() {
               disabled={state.dirty}
               onClick={() => {
                 void runtime.executor.testLLM();
-              }}>
+              }}
+            >
               Test LLM
             </button>
           </fieldset>
@@ -202,7 +205,8 @@ export function ExecutorTab() {
                           profile.id,
                           connection?.connected ? "disconnect" : "connect",
                         );
-                      }}>
+                      }}
+                    >
                       {connection?.connected ? "Disconnect" : "Connect"}
                     </button>
                     <button
@@ -211,7 +215,8 @@ export function ExecutorTab() {
                       disabled={state.dirty}
                       onClick={() => {
                         void runtime.executor.connection(profile.id, "test");
-                      }}>
+                      }}
+                    >
                       Test
                     </button>
                     <button
@@ -220,7 +225,8 @@ export function ExecutorTab() {
                       disabled={state.dirty || !connection?.connected}
                       onClick={() => {
                         void runtime.executor.connection(profile.id, "refresh");
-                      }}>
+                      }}
+                    >
                       Refresh tools
                     </button>
                     <button
@@ -233,7 +239,8 @@ export function ExecutorTab() {
                             (item) => item.id !== profile.id,
                           ),
                         }))
-                      }>
+                      }
+                    >
                       Remove
                     </button>
                   </div>
@@ -274,7 +281,8 @@ export function ExecutorTab() {
                     },
                   ],
                 }))
-              }>
+              }
+            >
               Add connection
             </button>
           </fieldset>

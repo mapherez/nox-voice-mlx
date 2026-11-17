@@ -19,9 +19,11 @@ SILENCE_TOKENS = np.array([948, 243, 1178, 546, 1736, 1030, 1978, 2008], dtype=n
 def load_pytorch_model():
     """Load PyTorch model."""
     import os
+
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
     import sys
+
     sys.path.insert(0, str(REPO_ROOT / "vendor" / "personaplex" / "moshi"))
     from moshi.models import loaders
 
@@ -44,33 +46,65 @@ def load_mlx_model():
     print("Loading MLX model...")
 
     transformer = TransformerConfig(
-        d_model=4096, num_heads=32, num_layers=32,
-        dim_feedforward=int(4.125 * 4096), causal=True, norm_first=True,
-        bias_ff=False, bias_attn=False, layer_scale=None, context=3000,
-        max_period=10000, use_conv_block=False, use_conv_bias=True,
-        cross_attention=False, gating=True, norm="rms_norm",
-        positional_embedding="rope", conv_layout=False, conv_kernel_size=3,
-        kv_repeat=1, max_seq_len=4096,
+        d_model=4096,
+        num_heads=32,
+        num_layers=32,
+        dim_feedforward=int(4.125 * 4096),
+        causal=True,
+        norm_first=True,
+        bias_ff=False,
+        bias_attn=False,
+        layer_scale=None,
+        context=3000,
+        max_period=10000,
+        use_conv_block=False,
+        use_conv_bias=True,
+        cross_attention=False,
+        gating=True,
+        norm="rms_norm",
+        positional_embedding="rope",
+        conv_layout=False,
+        conv_kernel_size=3,
+        kv_repeat=1,
+        max_seq_len=4096,
     )
     depformer = DepFormerConfig(
         transformer=TransformerConfig(
-            d_model=1024, num_heads=16, num_layers=6,
-            dim_feedforward=int(4.125 * 1024), causal=True, norm_first=True,
-            bias_ff=False, bias_attn=False, layer_scale=None, context=8,
-            max_period=10000, use_conv_block=False, use_conv_bias=True,
-            cross_attention=False, gating=True, norm="rms_norm",
-            positional_embedding="none", conv_layout=False, conv_kernel_size=3,
-            kv_repeat=1, max_seq_len=4096,
+            d_model=1024,
+            num_heads=16,
+            num_layers=6,
+            dim_feedforward=int(4.125 * 1024),
+            causal=True,
+            norm_first=True,
+            bias_ff=False,
+            bias_attn=False,
+            layer_scale=None,
+            context=8,
+            max_period=10000,
+            use_conv_block=False,
+            use_conv_bias=True,
+            cross_attention=False,
+            gating=True,
+            norm="rms_norm",
+            positional_embedding="none",
+            conv_layout=False,
+            conv_kernel_size=3,
+            kv_repeat=1,
+            max_seq_len=4096,
         ),
         num_slices=16,
         weights_per_step_schedule=None,
     )
     config = LmConfig(
-        transformer=transformer, depformer=depformer,
-        text_in_vocab_size=32001, text_out_vocab_size=32000,
-        audio_vocab_size=2049, audio_codebooks=16,
+        transformer=transformer,
+        depformer=depformer,
+        text_in_vocab_size=32001,
+        text_out_vocab_size=32000,
+        audio_vocab_size=2049,
+        audio_codebooks=16,
         audio_delays=[0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1],
-        conditioners={}, demux_second_stream=False,
+        conditioners={},
+        demux_second_stream=False,
     )
 
     model = Lm(config)
@@ -162,11 +196,12 @@ def compare_transformer_single_step(pth_model, mlx_model, mlx_config):
 
     # MLX forward
     from moshi_mlx.utils import sampling
+
     text_sampler = sampling.Sampler(temp=0.0)  # Greedy
     audio_sampler = sampling.Sampler(temp=0.0)
 
     mlx_text = mx.array([[text_token]])
-    mlx_audio = [mx.array([[tok]]) for tok in audio_tokens[:mlx_config.other_codebooks]]
+    mlx_audio = [mx.array([[tok]]) for tok in audio_tokens[: mlx_config.other_codebooks]]
 
     # Call _sample to get transformer output
     next_text, next_audio, transformer_out = mlx_model._sample(
@@ -232,9 +267,7 @@ def compare_greedy_sampling(pth_model, mlx_model, mlx_config, num_steps=5):
 
     print("  MLX greedy tokens:")
     for step in range(num_steps):
-        next_text, next_audio = mlx_model.sample(
-            mlx_text, mlx_audio, text_sampler, audio_sampler
-        )
+        next_text, next_audio = mlx_model.sample(mlx_text, mlx_audio, text_sampler, audio_sampler)
         mx.eval(next_text)
         if next_audio is not None:
             mx.eval(next_audio)
@@ -244,7 +277,7 @@ def compare_greedy_sampling(pth_model, mlx_model, mlx_config, num_steps=5):
             mlx_audio_tokens.append(np.array(next_audio[0, :, 0]).tolist())
 
         mlx_text = next_text
-        print(f"    Step {step+1}: text={mlx_text_tokens[-1]}", end="")
+        print(f"    Step {step + 1}: text={mlx_text_tokens[-1]}", end="")
         if next_audio is not None:
             print(f", audio={mlx_audio_tokens[-1][:4]}...")
         else:
@@ -280,20 +313,17 @@ def test_output_consistency(mlx_model, mlx_config, num_runs=3):
         mlx_text = mx.array([[mlx_config.text_out_vocab_size]])
         mlx_audio = [mx.array([[0]])] * mlx_config.other_codebooks
 
-        next_text, next_audio = mlx_model.sample(
-            mlx_text, mlx_audio, text_sampler, audio_sampler
-        )
+        next_text, next_audio = mlx_model.sample(mlx_text, mlx_audio, text_sampler, audio_sampler)
         mx.eval(next_text)
         mx.eval(next_audio)
 
-        outputs.append({
-            'text': int(next_text[0, 0]),
-            'audio': np.array(next_audio[0, :, 0]).tolist()
-        })
+        outputs.append(
+            {"text": int(next_text[0, 0]), "audio": np.array(next_audio[0, :, 0]).tolist()}
+        )
 
     # Check consistency
-    text_consistent = all(o['text'] == outputs[0]['text'] for o in outputs)
-    audio_consistent = all(o['audio'] == outputs[0]['audio'] for o in outputs)
+    text_consistent = all(o["text"] == outputs[0]["text"] for o in outputs)
+    audio_consistent = all(o["audio"] == outputs[0]["audio"] for o in outputs)
 
     print(f"  Text tokens across runs: {[o['text'] for o in outputs]}")
     print(f"  Text consistent: {text_consistent}")
@@ -324,7 +354,9 @@ def main():
         pth_model = load_pytorch_model()
         print("PyTorch model loaded!")
 
-        results.append(("Embedding Comparison", compare_embeddings(pth_model, mlx_model, mlx_config)))
+        results.append(
+            ("Embedding Comparison", compare_embeddings(pth_model, mlx_model, mlx_config))
+        )
         # Note: Full transformer comparison requires aligned streaming state
         # results.append(("Transformer Step", compare_transformer_single_step(pth_model, mlx_model, mlx_config)))
     except Exception as e:
@@ -349,4 +381,5 @@ def main():
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

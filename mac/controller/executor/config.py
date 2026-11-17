@@ -18,9 +18,15 @@ class Strict(BaseModel):
 def endpoint(value: str) -> str:
     try:
         parsed = urlsplit(value)
-        if (parsed.scheme not in {"http", "https"} or not parsed.hostname
-                or parsed.username is not None or parsed.password is not None
-                or parsed.fragment or parsed.query or any(c.isspace() for c in value)):
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.fragment
+            or parsed.query
+            or any(c.isspace() for c in value)
+        ):
             raise ValueError()
         _ = parsed.port
     except ValueError:
@@ -32,7 +38,9 @@ class LLMSettings(Strict):
     baseUrl: str = Field(default="http://127.0.0.1:1234/v1", max_length=2048)
     model: str = Field(default="", max_length=200)
     credential: Literal["", "executor"] = ""
-    instructions: str = Field(default="Be helpful and concise. Reply in the user's language.", max_length=8192)
+    instructions: str = Field(
+        default="Be helpful and concise. Reply in the user's language.", max_length=8192
+    )
     temperature: float = Field(default=0.3, ge=0, le=2)
     maxTokens: int = Field(default=2048, ge=64, le=32768)
     timeoutSeconds: int = Field(default=120, ge=5, le=1800)
@@ -94,7 +102,11 @@ class ExecutorUpdate(ExecutorSettings):
 class SettingsStore:
     def __init__(self, config):
         self.path = config.data_dir / "executor-settings.json"
-        self.value = ExecutorSettings.model_validate_json(self.path.read_text()) if self.path.exists() else ExecutorSettings()
+        self.value = (
+            ExecutorSettings.model_validate_json(self.path.read_text())
+            if self.path.exists()
+            else ExecutorSettings()
+        )
 
     def save(self, proposed):
         proposed = ExecutorSettings.model_validate(proposed.model_dump())
@@ -109,16 +121,27 @@ class SettingsStore:
         try:
             write_private(self.path, json.dumps(proposed.model_dump(), indent=2) + "\n")
         except OSError:
-            raise HTTPException(503, "Could not save executor settings on the controller.") from None
+            raise HTTPException(
+                503, "Could not save executor settings on the controller."
+            ) from None
         self.value = proposed
         return proposed
 
     def credential_definitions(self):
-        definitions = {"executor": {"id": "executor", "name": "Executor LLM", "fieldLabel": "API key",
-            "help": "Optional bearer credential for the configured LLM endpoint."}}
+        definitions = {
+            "executor": {
+                "id": "executor",
+                "name": "Executor LLM",
+                "fieldLabel": "API key",
+                "help": "Optional bearer credential for the configured LLM endpoint.",
+            }
+        }
         for connection in self.value.connections:
             if connection.credential:
-                definitions[connection.credential] = {"id": connection.credential,
-                    "name": connection.name, "fieldLabel": "API key",
-                    "help": "Bearer credential for this MCP connection. Test it in Executor & MCP."}
+                definitions[connection.credential] = {
+                    "id": connection.credential,
+                    "name": connection.name,
+                    "fieldLabel": "API key",
+                    "help": "Bearer credential for this MCP connection. Test it in Executor & MCP.",
+                }
         return definitions

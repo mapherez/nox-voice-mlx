@@ -25,7 +25,10 @@ def main():
     setup.add_argument("--port", type=int, default=8443)
     setup.add_argument("--worker-port", type=int, default=8000)
     setup.add_argument(
-        "--weights-dir", type=Path, default=MAC_ROOT / "weights", help="Root for provider asset folders"
+        "--weights-dir",
+        type=Path,
+        default=MAC_ROOT / "weights",
+        help="Root for provider asset folders",
     )
     sub.add_parser("controller", help="Run the controller manually; the model starts stopped")
     prepare = sub.add_parser("prepare-model", help="Download and verify the official model assets")
@@ -115,9 +118,7 @@ def main():
                 from .model_files import asset_root, prepare_model, verify_model
 
                 root = asset_root(weights)
-                manifest = (
-                    verify_model(root) if args.check else prepare_model(root, args.revision)
-                )
+                manifest = verify_model(root) if args.check else prepare_model(root, args.revision)
                 print(f"Model verified at official revision {manifest['revision']}.")
         elif args.command == "autostart":
             from . import autostart

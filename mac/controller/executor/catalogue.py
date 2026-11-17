@@ -16,14 +16,22 @@ def digest(value):
 
 
 def validator(schema):
-    if not isinstance(schema, dict) or schema.get("$schema", "https://json-schema.org/draft/2020-12/schema") != "https://json-schema.org/draft/2020-12/schema":
+    if (
+        not isinstance(schema, dict)
+        or schema.get("$schema", "https://json-schema.org/draft/2020-12/schema")
+        != "https://json-schema.org/draft/2020-12/schema"
+    ):
         raise ExecutionError("Only JSON Schema 2020-12 tool schemas are supported.")
 
     def check(value):
         if isinstance(value, dict):
             for key, item in value.items():
-                if key in {"$ref", "$dynamicRef"} and (not isinstance(item, str) or not item.startswith("#")):
-                    raise ExecutionError("External schema references are unsupported; no schema URL is fetched.")
+                if key in {"$ref", "$dynamicRef"} and (
+                    not isinstance(item, str) or not item.startswith("#")
+                ):
+                    raise ExecutionError(
+                        "External schema references are unsupported; no schema URL is fetched."
+                    )
                 check(item)
         elif isinstance(value, list):
             for item in value:
@@ -48,16 +56,26 @@ class Connection:
 
     async def connect(self):
         if self.settings.role != "direct":
-            raise ExecutionError("Suite discovery/descriptor negotiation is reserved for stage 6. Use a direct MCP profile.")
+            raise ExecutionError(
+                "Suite discovery/descriptor negotiation is reserved for stage 6. Use a direct MCP profile."
+            )
         tools = await self.client.connect()
         names = set()
         for raw in tools:
-            if (not isinstance(raw, dict) or not isinstance(raw.get("name"), str)
-                    or not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", raw["name"]) or raw["name"] in names):
+            if (
+                not isinstance(raw, dict)
+                or not isinstance(raw.get("name"), str)
+                or not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", raw["name"])
+                or raw["name"] in names
+            ):
                 raise ExecutionError("MCP advertised an invalid or duplicate tool name.")
             names.add(raw["name"])
-            if (not isinstance(raw.get("title", ""), str) or not isinstance(raw.get("description", ""), str)
-                    or not isinstance(raw.get("_meta", {}), dict) or not isinstance(raw.get("execution", {}), dict)):
+            if (
+                not isinstance(raw.get("title", ""), str)
+                or not isinstance(raw.get("description", ""), str)
+                or not isinstance(raw.get("_meta", {}), dict)
+                or not isinstance(raw.get("execution", {}), dict)
+            ):
                 raise ExecutionError("MCP advertised invalid tool metadata.")
             schema = raw.get("inputSchema")
             input_validator = validator(schema)
@@ -66,18 +84,35 @@ class Connection:
             # Never interpret unknown NoX descriptors as conventional unrestricted tools.
             blocked = bool(metadata) or raw.get("execution", {}).get("taskSupport") == "required"
             alias = "mcp_" + digest([self.settings.id, raw["name"]])[:24]
-            self.tools[alias] = {"raw": copy.deepcopy(raw), "input": input_validator,
-                "output": output_validator, "blocked": blocked}
-        self.identity = digest([self.settings.model_dump(), self.client.identity, self.client.capabilities, tools])
+            self.tools[alias] = {
+                "raw": copy.deepcopy(raw),
+                "input": input_validator,
+                "output": output_validator,
+                "blocked": blocked,
+            }
+        self.identity = digest(
+            [self.settings.model_dump(), self.client.identity, self.client.capabilities, tools]
+        )
         self.valid = True
         return self
 
     def describe(self):
-        return {"id": self.settings.id, "name": self.settings.name, "connected": self.valid,
-            "identity": self.identity, "server": self.client.identity,
-            "tools": [{"alias": alias, "name": tool["raw"]["name"],
-                "title": tool["raw"].get("title", tool["raw"]["name"]),
-                "supported": not tool["blocked"]} for alias, tool in self.tools.items()]}
+        return {
+            "id": self.settings.id,
+            "name": self.settings.name,
+            "connected": self.valid,
+            "identity": self.identity,
+            "server": self.client.identity,
+            "tools": [
+                {
+                    "alias": alias,
+                    "name": tool["raw"]["name"],
+                    "title": tool["raw"].get("title", tool["raw"]["name"]),
+                    "supported": not tool["blocked"],
+                }
+                for alias, tool in self.tools.items()
+            ],
+        }
 
     def definitions(self):
         definitions = []
@@ -86,15 +121,47 @@ class Connection:
                 continue
             raw = tool["raw"]
             # Bindings replace omitted arguments with actual structured values in code.
-            definitions.append({"type": "function", "function": {"name": alias,
-                "description": f"{self.settings.name}: {raw.get('description', raw['name'])}\n"
-                    "Input schema (validated after bindings): " + encode(raw["inputSchema"]),
-                "parameters": {"type": "object", "properties": {
-                    "arguments": {"type": "object", "description": "Literal tool arguments, omit bound fields."},
-                    "bindings": {"type": "array", "items": {"type": "object", "properties": {
-                        "target": {"type": "string", "description": "JSON Pointer into arguments, or empty for all arguments."},
-                        "reference": {"type": "string", "description": "Exact reference ID supplied with a prior result."},
-                        "pointer": {"type": "string", "description": "JSON Pointer into that structured result."}},
-                        "required": ["target", "reference", "pointer"], "additionalProperties": False}}},
-                    "required": ["arguments"], "additionalProperties": False}}})
+            definitions.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": alias,
+                        "description": f"{self.settings.name}: {raw.get('description', raw['name'])}\n"
+                        "Input schema (validated after bindings): " + encode(raw["inputSchema"]),
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "arguments": {
+                                    "type": "object",
+                                    "description": "Literal tool arguments, omit bound fields.",
+                                },
+                                "bindings": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "target": {
+                                                "type": "string",
+                                                "description": "JSON Pointer into arguments, or empty for all arguments.",
+                                            },
+                                            "reference": {
+                                                "type": "string",
+                                                "description": "Exact reference ID supplied with a prior result.",
+                                            },
+                                            "pointer": {
+                                                "type": "string",
+                                                "description": "JSON Pointer into that structured result.",
+                                            },
+                                        },
+                                        "required": ["target", "reference", "pointer"],
+                                        "additionalProperties": False,
+                                    },
+                                },
+                            },
+                            "required": ["arguments"],
+                            "additionalProperties": False,
+                        },
+                    },
+                }
+            )
         return definitions

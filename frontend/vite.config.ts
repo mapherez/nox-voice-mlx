@@ -1,3 +1,5 @@
+import type { FormatConfig } from "vite-plus/fmt";
+import formatOptions from "./format-options.json" with { type: "json" };
 import react from "@vitejs/plugin-react";
 import { readFileSync } from "node:fs";
 import { defineConfig, lazyPlugins } from "vite-plus";
@@ -34,39 +36,7 @@ export default defineConfig({
     },
     options: { typeAware: true, typeCheck: true },
   },
-  fmt: {
-    insertFinalNewline: true,
-    endOfLine: "lf",
-    useTabs: false,
-    tabWidth: 2,
-    printWidth: 80,
-    bracketSameLine: true,
-    sortPackageJson: false,
-    overrides: [
-      {
-        files: ["*.html"],
-        options: {
-          htmlWhitespaceSensitivity: "ignore",
-          bracketSameLine: true,
-        },
-      },
-    ],
-    ignorePatterns: [
-      "dist/**",
-      "node_modules/**",
-      ".vite/**",
-      ".vitest/**",
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/build/**",
-      "**/target/**",
-      "**/vendor/**",
-      "**/*.md",
-      "**/*.mdx",
-      "**/package-lock.json",
-      "**/pnpm-lock.yaml",
-    ],
-  },
+  fmt: formatOptions as FormatConfig,
   plugins: lazyPlugins(() => [
     react(),
     {

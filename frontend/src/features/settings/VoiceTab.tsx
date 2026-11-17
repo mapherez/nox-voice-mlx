@@ -9,7 +9,8 @@ export function VoiceTab() {
       role="tabpanel"
       aria-labelledby="tab-voice"
       className="settings-panel"
-      hidden={workspace.tab !== "voice"}>
+      hidden={workspace.tab !== "voice"}
+    >
       {" "}
       <div className="panel-heading">
         {" "}
@@ -30,7 +31,8 @@ export function VoiceTab() {
         id="persona-settings"
         className="settings-section"
         aria-labelledby="voice-heading"
-        hidden={!view.selected?.settingsSchema.properties.prompt}>
+        hidden={!view.selected?.settingsSchema.properties.prompt}
+      >
         {" "}
         <h3 id="voice-heading">Voice &amp; persona</h3>{" "}
         <p className="section-description">
@@ -46,7 +48,8 @@ export function VoiceTab() {
           value={profileText(draft.voice)}
           onChange={(event) =>
             runtime.settings.edit("voice", event.currentTarget.value)
-          }>
+          }
+        >
           {view.selected &&
             settingOptions(view.selected, "voice").map((option) => (
               <option key={option.value} value={option.value}>
@@ -66,13 +69,15 @@ export function VoiceTab() {
           value={profileText(draft.prompt)}
           onChange={(event) =>
             runtime.settings.edit("prompt", event.currentTarget.value)
-          }></textarea>{" "}
+          }
+        ></textarea>{" "}
       </section>{" "}
       <section
         id="transcription-settings"
         className="settings-section"
         aria-labelledby="transcription-heading"
-        hidden={!view.selected?.capabilities.audioChecks}>
+        hidden={!view.selected?.capabilities.audioChecks}
+      >
         {" "}
         <h3 id="transcription-heading">Transcription &amp; speech</h3>{" "}
         <label className="field-label" htmlFor="input-language">
@@ -85,7 +90,8 @@ export function VoiceTab() {
           value={profileText(draft.inputLanguage)}
           onChange={(event) =>
             runtime.settings.edit("inputLanguage", event.currentTarget.value)
-          }>
+          }
+        >
           {view.selected &&
             settingOptions(view.selected, "inputLanguage").map((option) => (
               <option key={option.value} value={option.value}>
@@ -106,7 +112,8 @@ export function VoiceTab() {
           value={profileText(draft.vocabulary)}
           onChange={(event) =>
             runtime.settings.edit("vocabulary", event.currentTarget.value)
-          }></textarea>{" "}
+          }
+        ></textarea>{" "}
         <p className="field-help">
           {" "}
           Hints can improve recognition; they do not guarantee exact
@@ -122,7 +129,8 @@ export function VoiceTab() {
           value={profileText(draft.outputLanguage)}
           onChange={(event) =>
             runtime.settings.edit("outputLanguage", event.currentTarget.value)
-          }>
+          }
+        >
           {view.selected &&
             settingOptions(view.selected, "outputLanguage").map((option) => (
               <option key={option.value} value={option.value}>
@@ -139,7 +147,8 @@ export function VoiceTab() {
           value={profileText(draft.voice)}
           onChange={(event) =>
             runtime.settings.edit("voice", event.currentTarget.value)
-          }>
+          }
+        >
           {view.selected &&
             settingOptions(view.selected, "voice").map((option) => (
               <option key={option.value} value={option.value}>
@@ -152,7 +161,8 @@ export function VoiceTab() {
         {" "}
         <div
           id="precision-settings"
-          hidden={!view.selected?.settingsSchema.properties.bits}>
+          hidden={!view.selected?.settingsSchema.properties.bits}
+        >
           {" "}
           <label className="field-label" htmlFor="quantization">
             {" "}
@@ -165,7 +175,8 @@ export function VoiceTab() {
             value={profileText(draft.bits)}
             onChange={(event) =>
               runtime.settings.edit("bits", Number(event.currentTarget.value))
-            }>
+            }
+          >
             {view.selected &&
               settingOptions(view.selected, "bits").map((option) => (
                 <option key={option.value} value={option.value}>

@@ -17,16 +17,24 @@ if __name__ == "__main__":
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
-            result = subprocess.run(["node", "tests/browser.mjs", sys.argv[1]], cwd=experiment.ROOT,
-                                    env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-                                         "TMPDIR": str(experiment.local_path(".tmp")) + "/",
-                                         "LFM3_TEST_URL": "http://localhost:" + str(server.server_port),
-                                         "LFM3_TEST_MCP_URL": fixture.url,
-                                         "LFM3_TEST_LLM_URL": llm.url})
+            result = subprocess.run(
+                ["node", "tests/browser.mjs", sys.argv[1]],
+                cwd=experiment.ROOT,
+                env={
+                    "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+                    "TMPDIR": str(experiment.local_path(".tmp")) + "/",
+                    "LFM3_TEST_URL": "http://localhost:" + str(server.server_port),
+                    "LFM3_TEST_MCP_URL": fixture.url,
+                    "LFM3_TEST_LLM_URL": llm.url,
+                },
+            )
             if result.returncode == 0:
-                assert [call["name"] for call in fixture.calls] == ["list_notes", "create_note"], fixture.calls
+                assert [call["name"] for call in fixture.calls] == ["list_notes", "create_note"], (
+                    fixture.calls
+                )
                 assert len(llm.requests) == 1
                 from llm_fixture import CONTENT
+
                 assert fixture.notes[0]["content"] == CONTENT
         finally:
             server.close_connections()

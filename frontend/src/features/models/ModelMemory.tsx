@@ -26,7 +26,8 @@ export function ModelMemory() {
       <div
         id="engine-progress"
         className="engine-progress"
-        hidden={!view.loading}>
+        hidden={!view.loading}
+      >
         {" "}
         <span></span>{" "}
       </div>{" "}
@@ -34,7 +35,8 @@ export function ModelMemory() {
         id="engine-error"
         className="inline-error"
         role="status"
-        hidden={!view.engineError}>
+        hidden={!view.engineError}
+      >
         {view.engineError}
       </p>{" "}
       <p className="field-help">

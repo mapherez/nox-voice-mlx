@@ -69,7 +69,8 @@ export function Dialog({
       onCancel={(event) => {
         event.preventDefault();
         onClose();
-      }}>
+      }}
+    >
       {children}
     </dialog>
   );

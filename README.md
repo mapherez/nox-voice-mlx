@@ -68,31 +68,31 @@ native ARM64 Python 3.12. Normal Docker deployment does not require Node or npm.
 
 ## Documentation
 
-| Document                                   | Read it for                                                                       |
-| ------------------------------------------ | --------------------------------------------------------------------------------- |
-| [Installation](docs/getting-started.md)    | The complete first installation                                                   |
-| [Mac reference](docs/mac-setup.md)         | Paths, ports, moving the installation, optional autostart and certificate renewal |
-| [Deployment reference](docs/deployment.md) | Environment variables, secrets, LAN/external access, updates and troubleshooting  |
-| [Architecture](docs/architecture.md)       | Authentication, transport, model loading and privacy boundaries                   |
-| [Multi-model engine contract](docs/voice-engine-contract.md) | Agreed target and implementation progress for PersonaPlex/LFM3, settings, interruption, tasks and NoX Suite integration |
-| [Stage 2.2 implementation plan](docs/implementation-stage-2.2.md) | React, TypeScript and Vite+ migration, structure and acceptance status |
-| [Stage 3 implementation](docs/implementation-stage-3.md) | Generic executor, task store, validation and remaining real acceptance |
-| [Executor setup and API](docs/executor.md) | LM Studio, MCP connections, credentials and task behavior |
-| [Validation](docs/validation.md)           | Development checks and deployment acceptance                                      |
-| [Third-party notices](docs/notices.md)     | Licenses and upstream components                                                  |
+| Document                                                          | Read it for                                                                                                             |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| [Installation](docs/getting-started.md)                           | The complete first installation                                                                                         |
+| [Mac reference](docs/mac-setup.md)                                | Paths, ports, moving the installation, optional autostart and certificate renewal                                       |
+| [Deployment reference](docs/deployment.md)                        | Environment variables, secrets, LAN/external access, updates and troubleshooting                                        |
+| [Architecture](docs/architecture.md)                              | Authentication, transport, model loading and privacy boundaries                                                         |
+| [Multi-model engine contract](docs/voice-engine-contract.md)      | Agreed target and implementation progress for PersonaPlex/LFM3, settings, interruption, tasks and NoX Suite integration |
+| [Stage 2.2 implementation plan](docs/implementation-stage-2.2.md) | React, TypeScript and Vite+ migration, structure and acceptance status                                                  |
+| [Stage 3 implementation](docs/implementation-stage-3.md)          | Generic executor, task store, validation and remaining real acceptance                                                  |
+| [Executor setup and API](docs/executor.md)                        | LM Studio, MCP connections, credentials and task behavior                                                               |
+| [Validation](docs/validation.md)                                  | Development checks and deployment acceptance                                                                            |
+| [Third-party notices](docs/notices.md)                            | Licenses and upstream components                                                                                        |
 
 ## Repository layout
 
-| Directory             | Contents                                                       |
-| --------------------- | -------------------------------------------------------------- |
-| `frontend/`           | React/TypeScript components, Vite+ tooling, sphere and browser audio |
-| `gateway/`            | Authentication, sessions and audio proxy                       |
-| `mac/controller/`     | Native controller, certificates and process lifecycle          |
-| `mac/engine/`         | PersonaPlex MLX inference worker                               |
+| Directory             | Contents                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| `frontend/`           | React/TypeScript components, Vite+ tooling, sphere and browser audio                        |
+| `gateway/`            | Authentication, sessions and audio proxy                                                    |
+| `mac/controller/`     | Native controller, certificates and process lifecycle                                       |
+| `mac/engine/`         | PersonaPlex MLX inference worker                                                            |
 | `mac/weights/`        | Separate `personaplex/` and `lfm3-audio/` asset folders; large assets are excluded from Git |
-| `deploy/`             | Compose, image build definition and environment template       |
-| `tests/`              | Security, lifecycle, streaming and native compatibility checks |
-| `vendor/personaplex/` | Pinned NVIDIA reference submodule                              |
+| `deploy/`             | Compose, image build definition and environment template                                    |
+| `tests/`              | Security, lifecycle, streaming and native compatibility checks                              |
+| `vendor/personaplex/` | Pinned NVIDIA reference submodule                                                           |
 
 The supplied Compose file selects the project's GHCR image. Building and
 publishing an image is a [maintainer task](docs/deployment.md#building-and-publishing),

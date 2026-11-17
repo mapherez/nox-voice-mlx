@@ -36,7 +36,14 @@ class ExecutorService:
 
     def sanitize(self, value, extra=()):
         # A malicious endpoint must not echo configured secrets into browser output/model input.
-        secrets_ = [*extra, *(entry.get("secret") for entry in self.credentials.read().values() if entry.get("secret"))]
+        secrets_ = [
+            *extra,
+            *(
+                entry.get("secret")
+                for entry in self.credentials.read().values()
+                if entry.get("secret")
+            ),
+        ]
 
         def redact(item):
             if isinstance(item, str):
@@ -62,11 +69,20 @@ class ExecutorService:
             return saved.model_dump()
 
     def catalogue(self):
-        return {"connections": [self.sanitize(connection.describe()) for connection in self.connections.values()]}
+        return {
+            "connections": [
+                self.sanitize(connection.describe()) for connection in self.connections.values()
+            ]
+        }
 
     def current(self, connection):
-        return self.connections.get(connection.settings.id) is connection and connection.credential_identity == digest(
-            self.credentials.secret(connection.settings.credential) if connection.settings.credential else None)
+        return self.connections.get(
+            connection.settings.id
+        ) is connection and connection.credential_identity == digest(
+            self.credentials.secret(connection.settings.credential)
+            if connection.settings.credential
+            else None
+        )
 
     async def test_llm(self):
         settings = self.settings.value.llm.model_copy(deep=True)
@@ -80,7 +96,9 @@ class ExecutorService:
         async with self.connection_lock:
             if self.manager.active:
                 raise HTTPException(409, "End the conversation before changing MCP connections.")
-            settings = next((item for item in self.settings.value.connections if item.id == connection_id), None)
+            settings = next(
+                (item for item in self.settings.value.connections if item.id == connection_id), None
+            )
             if settings is None:
                 raise HTTPException(404, "Unknown configured MCP connection.")
             if action == "disconnect":
@@ -103,7 +121,9 @@ class ExecutorService:
                     await previous.client.close()
                 return self.catalogue()
             except TimeoutError:
-                raise ExecutionError("MCP connection/discovery deadline reached. No business tool was called.") from None
+                raise ExecutionError(
+                    "MCP connection/discovery deadline reached. No business tool was called."
+                ) from None
             finally:
                 if action == "test" or self.connections.get(connection_id) is not candidate:
                     await candidate.client.close()
@@ -134,19 +154,33 @@ class ExecutorService:
         connections = {}
         for profile in settings.connections:
             connection = self.connections.get(profile.id)
-            if not connection or not connection.valid or connection.client.changed or not self.current(connection):
-                raise ExecutionError("Connect or refresh every configured MCP endpoint before starting a task.")
+            if (
+                not connection
+                or not connection.valid
+                or connection.client.changed
+                or not self.current(connection)
+            ):
+                raise ExecutionError(
+                    "Connect or refresh every configured MCP endpoint before starting a task."
+                )
             connections[profile.id] = connection
         secret = self.secret(settings.llm.credential)
-        secret_snapshot = tuple(entry["secret"] for entry in self.credentials.read().values() if entry.get("secret"))
+        secret_snapshot = tuple(
+            entry["secret"] for entry in self.credentials.read().values() if entry.get("secret")
+        )
         prior = next((task for task in store.tasks.values() if task["turnId"] == turn_id), None)
         if prior:
             if prior["transcript"] != transcript:
                 raise ExecutionError("A turn ID cannot be reused with a different transcript.")
             return prior
         identities = {key: connection.identity for key, connection in connections.items()}
-        task = store.admit(turn_id, transcript, settings.revision, identities,
-            digest([settings.llm.model_dump(), digest(secret)]))
+        task = store.admit(
+            turn_id,
+            transcript,
+            settings.revision,
+            identities,
+            digest([settings.llm.model_dump(), digest(secret)]),
+        )
         task["voiceSettingsRevision"] = voice_revision
         if task["taskId"] in self.jobs or task["state"] in TERMINAL:
             return task
@@ -182,23 +216,31 @@ class ExecutorService:
             if job:
                 job.cancel()
                 with suppress(TimeoutError):
-                    await asyncio.wait_for(asyncio.shield(asyncio.gather(job, return_exceptions=True)), timeout=3)
+                    await asyncio.wait_for(
+                        asyncio.shield(asyncio.gather(job, return_exceptions=True)), timeout=3
+                    )
             if task["state"] == "cancel_requested":
                 task["state"] = "cancelled"
         return copy.deepcopy(task)
 
     async def end_session(self, store):
         store.closed = True  # Dispatch guard closes before waiting on any remote cancellation.
-        await asyncio.gather(*(self.cancel(store, key) for key in store.tasks), return_exceptions=True)
+        await asyncio.gather(
+            *(self.cancel(store, key) for key in store.tasks), return_exceptions=True
+        )
 
     async def end_all(self):
-        await asyncio.gather(*(self.end_session(store) for store in self.stores.values()), return_exceptions=True)
+        await asyncio.gather(
+            *(self.end_session(store) for store in self.stores.values()), return_exceptions=True
+        )
 
     async def disconnect_all(self):
         connections, self.connections = self.connections, {}
         for connection in connections.values():
             connection.valid = False
-        await asyncio.gather(*(item.client.close() for item in connections.values()), return_exceptions=True)
+        await asyncio.gather(
+            *(item.client.close() for item in connections.values()), return_exceptions=True
+        )
 
     async def close(self):
         await self.end_all()

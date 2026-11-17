@@ -16,17 +16,17 @@ server and its requirements are not used by this application.
 
 ## Configuration and data locations
 
-| Item                       | Default location                                              |
-| -------------------------- | ------------------------------------------------------------- |
-| Controller configuration   | `~/Library/Application Support/NoX Voice/controller.json`     |
-| Versioned voice profiles   | `~/Library/Application Support/NoX Voice/voice-settings.json` |
-| Service credentials | `credentials.json` under the controller data directory (private, mode `600`) |
-| Download jobs | `downloads.json` under the controller data directory |
-| Worker bootstrap settings  | `workers/` under the controller data directory |
-| TLS files                  | `~/Library/Application Support/NoX Voice/tls/`                |
-| Gateway certificate bundle | `~/Library/Application Support/NoX Voice/tls/gateway/`        |
+| Item                       | Default location                                                               |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| Controller configuration   | `~/Library/Application Support/NoX Voice/controller.json`                      |
+| Versioned voice profiles   | `~/Library/Application Support/NoX Voice/voice-settings.json`                  |
+| Service credentials        | `credentials.json` under the controller data directory (private, mode `600`)   |
+| Download jobs              | `downloads.json` under the controller data directory                           |
+| Worker bootstrap settings  | `workers/` under the controller data directory                                 |
+| TLS files                  | `~/Library/Application Support/NoX Voice/tls/`                                 |
+| Gateway certificate bundle | `~/Library/Application Support/NoX Voice/tls/gateway/`                         |
 | Model assets               | `weights/personaplex/` and `weights/lfm3-audio/` in the installation directory |
-| Python environment         | `.venv/` in the installation directory                        |
+| Python environment         | `.venv/` in the installation directory                                         |
 
 `~` means the current user's home directory. These are application defaults, not
 a required location for the repository. Finder's **Go → Go to Folder** opens the
@@ -46,12 +46,12 @@ that file's parent directory for the new installation's data and certificates.
 
 The main Settings workspace has four tabs:
 
-| Tab | Purpose |
-| --- | --- |
-| Models | Select a voice model, download/repair files, Load/Eject and view memory status |
-| Voice | Independent voice/persona or transcription/speech settings for the selected model |
-| Credentials | Save, test, replace or remove service credentials; Hugging Face is supported |
-| General | Appearance, controller connection, diagnostics and account |
+| Tab         | Purpose                                                                           |
+| ----------- | --------------------------------------------------------------------------------- |
+| Models      | Select a voice model, download/repair files, Load/Eject and view memory status    |
+| Voice       | Independent voice/persona or transcription/speech settings for the selected model |
+| Credentials | Save, test, replace or remove service credentials; Hugging Face is supported      |
+| General     | Appearance, controller connection, diagnostics and account                        |
 
 Open **Models**, select a model and click **Download**. PersonaPlex requires a
 Hugging Face token and accepted model access terms; the links and access test are

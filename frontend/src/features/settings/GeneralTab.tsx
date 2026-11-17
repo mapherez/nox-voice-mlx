@@ -12,7 +12,8 @@ export function GeneralTab() {
       role="tabpanel"
       aria-labelledby="tab-general"
       className="settings-panel"
-      hidden={workspace.tab !== "general"}>
+      hidden={workspace.tab !== "general"}
+    >
       {" "}
       <div className="panel-heading">
         {" "}
@@ -23,7 +24,8 @@ export function GeneralTab() {
       </div>{" "}
       <section
         className="settings-section"
-        aria-labelledby="appearance-heading">
+        aria-labelledby="appearance-heading"
+      >
         {" "}
         <h3 id="appearance-heading">Appearance</h3>{" "}
         <label className="field-label" htmlFor="theme">
@@ -34,7 +36,8 @@ export function GeneralTab() {
           value={theme.theme}
           onChange={(event) =>
             theme.change(event.currentTarget.value as typeof theme.theme)
-          }>
+          }
+        >
           {" "}
           <option value="system">System</option>{" "}
           <option value="light">Light</option>{" "}
@@ -43,7 +46,8 @@ export function GeneralTab() {
       </section>{" "}
       <section
         className="settings-section"
-        aria-labelledby="connection-heading">
+        aria-labelledby="connection-heading"
+      >
         {" "}
         <div className="section-heading">
           {" "}
@@ -73,7 +77,8 @@ export function GeneralTab() {
           disabled={diagnostics.testing}
           onClick={() => {
             void runtime.testConnection();
-          }}>
+          }}
+        >
           {" "}
           Test connection <span aria-hidden="true">↗</span>{" "}
         </button>{" "}
@@ -100,7 +105,8 @@ export function GeneralTab() {
           id="events-details"
           onToggle={(event) => {
             if (event.currentTarget.open) void runtime.diagnostics.loadEvents();
-          }}>
+          }}
+        >
           {" "}
           <summary>Technical events</summary>{" "}
           <ol id="events" className="events">
@@ -110,7 +116,8 @@ export function GeneralTab() {
       </section>{" "}
       <section
         className="settings-section account-section"
-        aria-labelledby="account-heading">
+        aria-labelledby="account-heading"
+      >
         {" "}
         <h3 id="account-heading">Account</h3>{" "}
         <div className="account-row">
@@ -132,7 +139,8 @@ export function GeneralTab() {
           className="button secondary full-width"
           onClick={() => {
             void runtime.logout();
-          }}>
+          }}
+        >
           {" "}
           Sign out{" "}
         </button>{" "}

@@ -33,37 +33,72 @@ class LLMClient:
 
     async def test(self):
         try:
-            value = await json_http(self.client, "GET", self.settings.baseUrl + "/models",
-                headers=self.headers, timeout=min(15, self.settings.timeoutSeconds))
+            value = await json_http(
+                self.client,
+                "GET",
+                self.settings.baseUrl + "/models",
+                headers=self.headers,
+                timeout=min(15, self.settings.timeoutSeconds),
+            )
             data = value.get("data")
             if not isinstance(data, list):
                 raise ExecutionError("LLM returned an invalid model list.")
-            models = [item["id"] for item in data if isinstance(item, dict) and isinstance(item.get("id"), str)]
-            return {"connected": True, "models": models,
+            models = [
+                item["id"]
+                for item in data
+                if isinstance(item, dict) and isinstance(item.get("id"), str)
+            ]
+            return {
+                "connected": True,
+                "models": models,
                 "selectedModelAvailable": self.settings.model in models,
-                "message": "Endpoint reachable. Tool support is verified during task execution, not by listing models."}
+                "message": "Endpoint reachable. Tool support is verified during task execution, not by listing models.",
+            }
         except (httpx.HTTPError, TimeoutError):
-            raise ExecutionError("Cannot reach the configured LLM endpoint from the controller.") from None
+            raise ExecutionError(
+                "Cannot reach the configured LLM endpoint from the controller."
+            ) from None
 
     async def complete(self, messages, tools, context_bytes):
-        body = {"model": self.settings.model, "messages": messages, "stream": False,
-            "temperature": self.settings.temperature, "max_tokens": self.settings.maxTokens}
+        body = {
+            "model": self.settings.model,
+            "messages": messages,
+            "stream": False,
+            "temperature": self.settings.temperature,
+            "max_tokens": self.settings.maxTokens,
+        }
         if tools:
             body.update(tools=tools, tool_choice="auto", parallel_tool_calls=False)
         if len(encode(body).encode()) > context_bytes:
-            raise ExecutionError("Executor context budget reached. Original objective and structured references were retained; no further call was sent.")
+            raise ExecutionError(
+                "Executor context budget reached. Original objective and structured references were retained; no further call was sent."
+            )
         try:
-            value = await json_http(self.client, "POST", self.settings.baseUrl + "/chat/completions",
-                body=body, headers=self.headers, timeout=self.settings.timeoutSeconds)
+            value = await json_http(
+                self.client,
+                "POST",
+                self.settings.baseUrl + "/chat/completions",
+                body=body,
+                headers=self.headers,
+                timeout=self.settings.timeoutSeconds,
+            )
             choice = value["choices"][0]
             message = choice["message"]
-            if choice.get("finish_reason") not in {"stop", "tool_calls"} or not isinstance(message, dict):
-                raise ExecutionError("Executor output was incomplete or used an unsupported finish reason.")
+            if choice.get("finish_reason") not in {"stop", "tool_calls"} or not isinstance(
+                message, dict
+            ):
+                raise ExecutionError(
+                    "Executor output was incomplete or used an unsupported finish reason."
+                )
             if message.get("role") != "assistant":
                 raise ExecutionError("Executor returned an invalid assistant message.")
-            return {key: message[key] for key in ("role", "content", "tool_calls") if key in message}
+            return {
+                key: message[key] for key in ("role", "content", "tool_calls") if key in message
+            }
         except (httpx.HTTPError, TimeoutError):
-            raise ExecutionError("LLM request failed. Check endpoint, model and context capacity.") from None
+            raise ExecutionError(
+                "LLM request failed. Check endpoint, model and context capacity."
+            ) from None
         except (KeyError, IndexError, TypeError):
             raise ExecutionError("LLM returned an invalid chat completion.") from None
 

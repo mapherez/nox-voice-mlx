@@ -11,16 +11,16 @@ registry; currently `huggingface` is supported.
 
 `GET /api/voice/v1/models` returns `{models: [...]}`. Each entry includes:
 
-| Field | Meaning |
-| --- | --- |
-| `id`, `name` | Stable provider ID and display name |
-| `source`, `runtime`, `revision` | Official model source, runtime and immutable model revision |
-| `directory` | Configured provider folder on the controller Mac |
-| `downloadBytes`, `sizeApproximate` | Required download size and whether it is an estimate |
-| `credentialService` | Required service ID or `null` for public downloads |
-| `localState` | `not_downloaded`, `present` or `verified` |
-| `loaded` | Whether the model is currently ready in memory |
-| `missingCount` | Missing required installation entries |
+| Field                              | Meaning                                                     |
+| ---------------------------------- | ----------------------------------------------------------- |
+| `id`, `name`                       | Stable provider ID and display name                         |
+| `source`, `runtime`, `revision`    | Official model source, runtime and immutable model revision |
+| `directory`                        | Configured provider folder on the controller Mac            |
+| `downloadBytes`, `sizeApproximate` | Required download size and whether it is an estimate        |
+| `credentialService`                | Required service ID or `null` for public downloads          |
+| `localState`                       | `not_downloaded`, `present` or `verified`                   |
+| `loaded`                           | Whether the model is currently ready in memory              |
+| `missingCount`                     | Missing required installation entries                       |
 
 Presence does not prove integrity. Verification is cached against local file
 metadata for completed downloads and repeated in full on Load. Models do not

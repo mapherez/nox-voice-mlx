@@ -28,10 +28,19 @@ from delegation import DelegationManager
 from mcp_client import MCPError, MCPManager
 
 ROOT = Path(__file__).resolve().parent
-ASSETS = {"/": "index.html", "/app.js": "app.js", "/audio.js": "audio.js", "/tools.js": "tools.js",
-          "/capture.js": "capture.js", "/style.css": "style.css"}
-MIME = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
-        ".css": "text/css; charset=utf-8"}
+ASSETS = {
+    "/": "index.html",
+    "/app.js": "app.js",
+    "/audio.js": "audio.js",
+    "/tools.js": "tools.js",
+    "/capture.js": "capture.js",
+    "/style.css": "style.css",
+}
+MIME = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+}
 
 
 def local_path(relative):
@@ -53,7 +62,9 @@ def exclusive_operation():
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            raise RuntimeError("This experiment is already preparing or running. Stop it first.") from None
+            raise RuntimeError(
+                "This experiment is already preparing or running. Stop it first."
+            ) from None
         try:
             yield
         finally:
@@ -69,7 +80,11 @@ def digest(path):
 
 
 def checked(path, artifact):
-    return path.is_file() and path.stat().st_size == artifact["size"] and digest(path) == artifact["sha256"]
+    return (
+        path.is_file()
+        and path.stat().st_size == artifact["size"]
+        and digest(path) == artifact["sha256"]
+    )
 
 
 def download(url, destination, artifact):
@@ -100,8 +115,12 @@ def download(url, destination, artifact):
                 sha.update(block)
                 output.write(block)
                 if time.monotonic() - last_report > 3:
-                    print("{}: {:.0f}% ({:.0f} MB)".format(
-                        destination.name, size * 100 / artifact["size"], size / 1_000_000), flush=True)
+                    print(
+                        "{}: {:.0f}% ({:.0f} MB)".format(
+                            destination.name, size * 100 / artifact["size"], size / 1_000_000
+                        ),
+                        flush=True,
+                    )
                     last_report = time.monotonic()
         if size != artifact["size"] or sha.hexdigest() != artifact["sha256"]:
             raise RuntimeError("Download checksum or size does not match: " + destination.name)
@@ -117,19 +136,24 @@ def extract_runtime(archive, destination):
         members = source.getmembers()
         for member in members:
             target = destination / member.name
-            if (Path(member.name).is_absolute()
-                    or ".." in Path(member.name).parts
-                    or os.path.commonpath([str(destination), str(target.resolve())]) != str(destination)):
+            if (
+                Path(member.name).is_absolute()
+                or ".." in Path(member.name).parts
+                or os.path.commonpath([str(destination), str(target.resolve())]) != str(destination)
+            ):
                 raise ValueError("Unsafe archive path.")
             if not (member.isfile() or member.isdir() or member.issym()):
                 raise ValueError("Unsupported archive entry.")
-            if any(parent in {entry.name.rstrip("/") for entry in members if entry.issym()}
-                   for parent in [str(path) for path in Path(member.name).parents]):
+            if any(
+                parent in {entry.name.rstrip("/") for entry in members if entry.issym()}
+                for parent in [str(path) for path in Path(member.name).parents]
+            ):
                 raise ValueError("Archive entry is nested below a link.")
             if member.issym():
                 link = target.parent / member.linkname
-                if (Path(member.linkname).is_absolute()
-                        or os.path.commonpath([str(destination), str(link.resolve())]) != str(destination)):
+                if Path(member.linkname).is_absolute() or os.path.commonpath(
+                    [str(destination), str(link.resolve())]
+                ) != str(destination):
                     raise ValueError("Unsafe archive link.")
         # Create links last; no archive entry may write through a link.
         for member in members:
@@ -182,7 +206,8 @@ def prepare(runtime_only=False):
         model = data["model"]
         for artifact in model["files"]:
             url = "https://huggingface.co/{}/resolve/{}/{}".format(
-                model["repository"], model["revision"], artifact["name"])
+                model["repository"], model["revision"], artifact["name"]
+            )
             download(url, local_path("models/" + artifact["name"]), artifact)
     print("Preparation complete. All downloaded files are inside: " + str(ROOT), flush=True)
 
@@ -192,11 +217,16 @@ def runtime_environment():
     cache.mkdir(exist_ok=True)
     temporary.mkdir(exist_ok=True)
     # No user tokens, model paths, proxy settings or inherited llama flags.
-    environment = {"PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8",
-                   "TMPDIR": str(temporary) + "/", "XDG_CACHE_HOME": str(cache),
-                   "HF_HOME": str(cache / "huggingface"),
-                   "HF_HUB_CACHE": str(cache / "huggingface" / "hub"),
-                   "LLAMA_CACHE": str(cache / "llama"), "HF_HUB_OFFLINE": "1"}
+    environment = {
+        "PATH": "/usr/bin:/bin",
+        "LANG": "en_US.UTF-8",
+        "TMPDIR": str(temporary) + "/",
+        "XDG_CACHE_HOME": str(cache),
+        "HF_HOME": str(cache / "huggingface"),
+        "HF_HUB_CACHE": str(cache / "huggingface" / "hub"),
+        "LLAMA_CACHE": str(cache / "llama"),
+        "HF_HUB_OFFLINE": "1",
+    }
     return environment
 
 
@@ -241,8 +271,9 @@ class Handler(BaseHTTPRequestHandler):
         hosts = {"localhost:" + str(port), "127.0.0.1:" + str(port)}
         host = self.headers.get("Host", "")
         origin = self.headers.get("Origin")
-        return (host in hosts and (origin == "http://" + host
-                or (origin is None and not require_origin)))
+        return host in hosts and (
+            origin == "http://" + host or (origin is None and not require_origin)
+        )
 
     def reply(self, status, body, kind="application/json"):
         self.send_response(status)
@@ -251,9 +282,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self'; "
-                         "script-src 'self'; style-src 'self'; worker-src 'self'; "
-                         "object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; connect-src 'self'; "
+            "script-src 'self'; style-src 'self'; worker-src 'self'; "
+            "object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+        )
         self.send_header("Permissions-Policy", "microphone=(self), camera=(), geolocation=()")
         self.end_headers()
         self.wfile.write(body)
@@ -284,9 +318,15 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(403, b'{"error":"Same origin required."}')
             self.close_connection = True
             return
-        if self.path not in {"/api/mcp/connect", "/api/mcp/disconnect", "/api/mcp/call",
-                             "/api/delegation/configure", "/api/delegation/generate",
-                             "/api/delegation/execute", "/api/delegation/discard"}:
+        if self.path not in {
+            "/api/mcp/connect",
+            "/api/mcp/disconnect",
+            "/api/mcp/call",
+            "/api/delegation/configure",
+            "/api/delegation/generate",
+            "/api/delegation/execute",
+            "/api/delegation/discard",
+        }:
             self.reply(404, b'{"error":"Not found."}')
             self.close_connection = True
             return
@@ -297,7 +337,12 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < length <= 1024 * 1024 or self.headers.get("Transfer-Encoding"):
                 raise ValueError("Invalid request size (maximum 1 MB).")
             self.connection.settimeout(10)
-            body = json.loads(self.rfile.read(length), parse_constant=lambda _value: (_ for _ in ()).throw(ValueError("Invalid JSON number.")))
+            body = json.loads(
+                self.rfile.read(length),
+                parse_constant=lambda _value: (_ for _ in ()).throw(
+                    ValueError("Invalid JSON number.")
+                ),
+            )
             if not isinstance(body, dict):
                 raise ValueError("Expected a JSON object.")
             if self.path == "/api/mcp/connect":
@@ -308,14 +353,23 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.delegation.clear()
                 result = self.server.mcp.profile()
             elif self.path == "/api/mcp/call":
-                result = self.server.mcp.execute(body.get("connectionId"), body.get("invocationId"),
-                                                 body.get("name"), body.get("arguments"))
+                result = self.server.mcp.execute(
+                    body.get("connectionId"),
+                    body.get("invocationId"),
+                    body.get("name"),
+                    body.get("arguments"),
+                )
             elif self.path == "/api/delegation/configure":
-                result = self.server.delegation.configure(body.get("url"), body.get("model"),
-                                                          body.get("connectionId"), body.get("target"))
+                result = self.server.delegation.configure(
+                    body.get("url"), body.get("model"), body.get("connectionId"), body.get("target")
+                )
             elif self.path == "/api/delegation/generate":
-                result = self.server.delegation.generate(body.get("configurationId"), body.get("connectionId"),
-                                                         body.get("invocationId"), body.get("task"))
+                result = self.server.delegation.generate(
+                    body.get("configurationId"),
+                    body.get("connectionId"),
+                    body.get("invocationId"),
+                    body.get("task"),
+                )
             elif self.path == "/api/delegation/execute":
                 result = self.server.delegation.execute(body.get("draftId"))
             else:
@@ -326,19 +380,28 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(400, json.dumps({"error": str(error)}).encode())
 
     def realtime(self):
-        if (self.headers.get("Upgrade", "").lower() != "websocket"
-                or self.headers.get("Sec-WebSocket-Version") != "13"):
+        if (
+            self.headers.get("Upgrade", "").lower() != "websocket"
+            or self.headers.get("Sec-WebSocket-Version") != "13"
+        ):
             self.reply(400, b'{"error":"WebSocket required."}')
             return
         self.close_connection = True
         try:
-            with socket.create_connection(("127.0.0.1", self.server.backend_port), timeout=10) as backend:
-                headers = ["GET /v1/realtime HTTP/1.1",
-                           "Host: 127.0.0.1:" + str(self.server.backend_port),
-                           "Upgrade: websocket", "Connection: Upgrade",
-                           "Sec-WebSocket-Version: 13",
-                           "Sec-WebSocket-Key: " + self.headers.get("Sec-WebSocket-Key", ""),
-                           "Authorization: Bearer " + self.server.api_key, "", ""]
+            with socket.create_connection(
+                ("127.0.0.1", self.server.backend_port), timeout=10
+            ) as backend:
+                headers = [
+                    "GET /v1/realtime HTTP/1.1",
+                    "Host: 127.0.0.1:" + str(self.server.backend_port),
+                    "Upgrade: websocket",
+                    "Connection: Upgrade",
+                    "Sec-WebSocket-Version: 13",
+                    "Sec-WebSocket-Key: " + self.headers.get("Sec-WebSocket-Key", ""),
+                    "Authorization: Bearer " + self.server.api_key,
+                    "",
+                    "",
+                ]
                 backend.sendall("\r\n".join(headers).encode("ascii"))
                 with self.server.connections_lock:
                     self.server.connections.update([self.connection, backend])
@@ -401,11 +464,30 @@ def serve(port):
     server = LocalServer(("127.0.0.1", port), backend_port, key)
     environment = runtime_environment()
     environment["LLAMA_API_KEY"] = key
-    command = [str(binary), "--model", str(paths[0]), "--mmproj", str(paths[1]),
-               "--host", "127.0.0.1", "--port", str(backend_port), "--offline",
-               "--ctx-size", "32768", "--parallel", "1", "--n-gpu-layers", "99",
-               "--jinja", "--no-warmup", "--no-webui-mcp-proxy", "--no-slots",
-               "--log-verbosity", "2"]
+    command = [
+        str(binary),
+        "--model",
+        str(paths[0]),
+        "--mmproj",
+        str(paths[1]),
+        "--host",
+        "127.0.0.1",
+        "--port",
+        str(backend_port),
+        "--offline",
+        "--ctx-size",
+        "32768",
+        "--parallel",
+        "1",
+        "--n-gpu-layers",
+        "99",
+        "--jinja",
+        "--no-warmup",
+        "--no-webui-mcp-proxy",
+        "--no-slots",
+        "--log-verbosity",
+        "2",
+    ]
     process = None
     previous = {}
 
@@ -418,8 +500,11 @@ def serve(port):
         print("Loading LFM3-Audio-2B. Nothing starts automatically at login.", flush=True)
         process = subprocess.Popen(command, cwd=ROOT, env=environment, start_new_session=True)
         wait_ready(process, backend_port, key)
-        print("\nOpen http://localhost:{}\nHold Space to speak. Release to send.\n"
-              "Press Ctrl+C here to stop the experiment and unload the model.\n".format(port), flush=True)
+        print(
+            "\nOpen http://localhost:{}\nHold Space to speak. Release to send.\n"
+            "Press Ctrl+C here to stop the experiment and unload the model.\n".format(port),
+            flush=True,
+        )
         server.timeout = 0.5
         while process.poll() is None:
             server.handle_request()

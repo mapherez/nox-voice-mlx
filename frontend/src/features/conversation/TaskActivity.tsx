@@ -54,7 +54,8 @@ export function TaskActivity() {
                 type="button"
                 className="text-button"
                 disabled={!audio.active || task.state === "cancel_requested"}
-                onClick={() => runtime.audio.lfm.cancelTask(task.taskId)}>
+                onClick={() => runtime.audio.lfm.cancelTask(task.taskId)}
+              >
                 Cancel task
               </button>
             ) : null}
@@ -63,7 +64,8 @@ export function TaskActivity() {
                 type="button"
                 className="text-button"
                 disabled={!audio.active || audio.recording}
-                onClick={() => runtime.audio.speak(task.speech)}>
+                onClick={() => runtime.audio.speak(task.speech)}
+              >
                 Read response
               </button>
             ) : null}
@@ -72,7 +74,8 @@ export function TaskActivity() {
               className="text-button"
               onClick={() => {
                 void inspect(task.sessionId, task.taskId);
-              }}>
+              }}
+            >
               View full result
             </button>
           </div>

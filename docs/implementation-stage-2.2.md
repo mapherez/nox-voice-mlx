@@ -82,33 +82,33 @@ library for the existing single-page interface.
 Each item is part of stage 2.2, not a replacement for an original engine stage.
 
 1. [x] **Record the baseline.** Run the existing tests/build and capture representative
-   desktop/mobile screenshots and interaction checks. Record existing failures
-   separately. Map controls, keyboard handlers, polling, session cleanup and
-   async race guards before moving them.
+       desktop/mobile screenshots and interaction checks. Record existing failures
+       separately. Map controls, keyboard handlers, polling, session cleanup and
+       async race guards before moving them.
 2. [x] **Adopt Vite+ and add React support.** Select compatible stable releases and
-   pin dependencies/toolchain versions in the project lockfile. Keep npm and its
-   lockfile. Configure TSX, React support, Vite+ checks/tests/build and explicit
-   type checking. Validate this tooling change against the existing app before
-   replacing its interface.
+       pin dependencies/toolchain versions in the project lockfile. Keep npm and its
+       lockfile. Configure TSX, React support, Vite+ checks/tests/build and explicit
+       type checking. Validate this tooling change against the existing app before
+       replacing its interface.
 3. [x] **Separate state and services.** Extract typed requests, session/controller
-   state, operation state and settings drafts from DOM manipulation. Preserve
-   CSRF, credentials handling, request invalidation and revision conflicts.
-   Adapt the audio/orb lifecycle interfaces only where component ownership needs
-   explicit subscription or disposal.
+       state, operation state and settings drafts from DOM manipulation. Preserve
+       CSRF, credentials handling, request invalidation and revision conflicts.
+       Adapt the audio/orb lifecycle interfaces only where component ownership needs
+       explicit subscription or disposal.
 4. [x] **Migrate the interface by feature.** Move the shell/theme/session UI,
-   Settings and its four tabs, model management, Downloads and Credentials,
-   then Conversation/audio checks into focused React components. Run the
-   relevant regression checks after each area. Keep existing behavior and CSS
-   through the transition. The final interface has one React owner per region;
-   remove the superseded static markup, manual renderers and event wiring.
+       Settings and its four tabs, model management, Downloads and Credentials,
+       then Conversation/audio checks into focused React components. Run the
+       relevant regression checks after each area. Keep existing behavior and CSS
+       through the transition. The final interface has one React owner per region;
+       remove the superseded static markup, manual renderers and event wiring.
 5. [x] **Complete build and delivery integration.** Update the frontend Docker build
-   stage, CI, development commands and third-party notices. Keep the final
-   static output at `frontend/dist` for the Python gateway. Validate clean
-   installs and the supported Linux image platforms.
+       stage, CI, development commands and third-party notices. Keep the final
+       static output at `frontend/dist` for the Python gateway. Validate clean
+       installs and the supported Linux image platforms.
 6. [x] **Verify parity and hand over for deployment validation.** Run the acceptance
-   checks below, compare the baseline, update architecture/validation/setup
-   documentation, and report results and limitations. Mark 2.2 complete only
-   after its acceptance is satisfied; then resume stage 3.
+       checks below, compare the baseline, update architecture/validation/setup
+       documentation, and report results and limitations. Mark 2.2 complete only
+       after its acceptance is satisfied; then resume stage 3.
 
 Automated checks, handover and user-reported real deployment acceptance are
 complete. Observed test/build
@@ -166,19 +166,19 @@ Modal focus restoration and keyboard handling remain deliberate and testable.
 
 ## Acceptance checklist
 
-| Area | Required evidence |
-| --- | --- |
-| Toolchain | Clean locked install; Vite+ format/lint/type checks, tests and production build pass; emitted worklet/font/license assets resolve |
-| Authentication | Existing Google entry/callback, session expiry, logout, local/HTTPS origins, CSRF and controller-offline behavior are preserved |
-| Conversation | PersonaPlex start/end/mute and full-duplex behavior; LFM3 capture, literal transcript, supplied-text speech and interruption remain available |
-| Input and cleanup | Space while Read aloud has focus, key repeat/release, text-field typing, modal keyboard controls, touch/pointer release/cancel, late permission grants and resource release retain their behavior |
-| Lifecycle replay | Development effect replay, repeated renders and opening/closing views do not duplicate sockets, microphone streams, listeners, timers or unsafe requests |
-| Settings | Four tabs, model-specific controls, inactive profiles, draft preservation, save/conflict/reload, connection diagnostics, theme and account controls behave as before |
-| Models and downloads | Download/local/loaded states stay distinct; Load/Eject, Finder, progress, cancel/retry/resume, terminal-only Clear and global indicator behave as before; files and active work survive Clear |
-| Credentials | Save/test/replace/remove and feedback remain; no saved secret is returned or persisted in browser storage/logs |
-| Visual and accessibility | Compare representative desktop, phone and tablet layouts in light/dark themes; retain labels, SVGs, focus, tab/dialog navigation and touch wording |
-| Delivery | Build/run the actual container, check gateway-served assets and existing startup/security checks; verify both image targets without claiming an unrun platform passed |
-| Real installation | Repeat the user's established Mac/browser checks, including actual audio, Finder, model memory and another-device exclusivity; identify the Clear response if it still fails |
+| Area                     | Required evidence                                                                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Toolchain                | Clean locked install; Vite+ format/lint/type checks, tests and production build pass; emitted worklet/font/license assets resolve                                                                 |
+| Authentication           | Existing Google entry/callback, session expiry, logout, local/HTTPS origins, CSRF and controller-offline behavior are preserved                                                                   |
+| Conversation             | PersonaPlex start/end/mute and full-duplex behavior; LFM3 capture, literal transcript, supplied-text speech and interruption remain available                                                     |
+| Input and cleanup        | Space while Read aloud has focus, key repeat/release, text-field typing, modal keyboard controls, touch/pointer release/cancel, late permission grants and resource release retain their behavior |
+| Lifecycle replay         | Development effect replay, repeated renders and opening/closing views do not duplicate sockets, microphone streams, listeners, timers or unsafe requests                                          |
+| Settings                 | Four tabs, model-specific controls, inactive profiles, draft preservation, save/conflict/reload, connection diagnostics, theme and account controls behave as before                              |
+| Models and downloads     | Download/local/loaded states stay distinct; Load/Eject, Finder, progress, cancel/retry/resume, terminal-only Clear and global indicator behave as before; files and active work survive Clear     |
+| Credentials              | Save/test/replace/remove and feedback remain; no saved secret is returned or persisted in browser storage/logs                                                                                    |
+| Visual and accessibility | Compare representative desktop, phone and tablet layouts in light/dark themes; retain labels, SVGs, focus, tab/dialog navigation and touch wording                                                |
+| Delivery                 | Build/run the actual container, check gateway-served assets and existing startup/security checks; verify both image targets without claiming an unrun platform passed                             |
+| Real installation        | Repeat the user's established Mac/browser checks, including actual audio, Finder, model memory and another-device exclusivity; identify the Clear response if it still fails                      |
 
 Preserve and adapt the existing unit and browser regression suites. Add targeted
 tests for new component ownership, async draft/session races and lifecycle

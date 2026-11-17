@@ -17,10 +17,17 @@ class Handler(BaseHTTPRequestHandler):
         fixture.requests.append(body)
         fixture.started.set()
         fixture.release.wait(timeout=5)
-        output = fixture.output if fixture.output is not None else [
-            {"type": "reasoning", "content": "This must never become note content."},
-            {"type": "message", "content": json.dumps({"title": "Delegated note", "content": CONTENT})},
-        ]
+        output = (
+            fixture.output
+            if fixture.output is not None
+            else [
+                {"type": "reasoning", "content": "This must never become note content."},
+                {
+                    "type": "message",
+                    "content": json.dumps({"title": "Delegated note", "content": CONTENT}),
+                },
+            ]
+        )
         data = json.dumps({"output": output}).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")

@@ -330,7 +330,11 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
                 503: "The selected model is unavailable. Check model preparation and the native controller.",
             }
             return JSONResponse(
-                {"error": value["error"] if isinstance(value.get("error"), str) and len(value["error"]) <= 500 else messages.get(status, "Controller could not complete the request.")},
+                {
+                    "error": value["error"]
+                    if isinstance(value.get("error"), str) and len(value["error"]) <= 500
+                    else messages.get(status, "Controller could not complete the request.")
+                },
                 status_code=status if status in messages else 502,
             )
         except ControllerUnavailable as error:
@@ -348,7 +352,14 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
                 value = await request.json()
             except ValueError:
                 return JSONResponse({"error": "Invalid executor settings."}, status_code=422)
-            if not isinstance(value, dict) or set(value) != {"schemaVersion", "revision", "enabled", "llm", "connections", "limits"}:
+            if not isinstance(value, dict) or set(value) != {
+                "schemaVersion",
+                "revision",
+                "enabled",
+                "llm",
+                "connections",
+                "limits",
+            }:
                 return JSONResponse({"error": "Invalid executor settings."}, status_code=422)
         return await forward_voice(request.method, "/api/voice/v1/executor/settings", value)
 
@@ -362,25 +373,46 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
 
     @app.post("/api/voice/v1/executor/connections/{connection_id}/{action}")
     async def executor_connection(connection_id: str, action: str):
-        if not re.fullmatch(r"[a-z][a-z0-9_-]{0,47}", connection_id) or action not in {"connect", "disconnect", "refresh", "test"}:
+        if not re.fullmatch(r"[a-z][a-z0-9_-]{0,47}", connection_id) or action not in {
+            "connect",
+            "disconnect",
+            "refresh",
+            "test",
+        }:
             return JSONResponse({"error": "Unknown connection action."}, status_code=404)
-        return await forward_voice("POST", f"/api/voice/v1/executor/connections/{connection_id}/{action}", timeout=180)
+        return await forward_voice(
+            "POST", f"/api/voice/v1/executor/connections/{connection_id}/{action}", timeout=180
+        )
 
     @app.get("/api/voice/v1/sessions/{session_id}/tasks")
     @app.get("/api/voice/v1/sessions/{session_id}/tasks/{task_id}")
     async def task_activity(request: Request, session_id: str, task_id: str | None = None):
-        if not re.fullmatch(r"[a-f0-9]{32}", session_id) or task_id is not None and not re.fullmatch(r"[a-f0-9]{32}", task_id):
+        if (
+            not re.fullmatch(r"[a-f0-9]{32}", session_id)
+            or task_id is not None
+            and not re.fullmatch(r"[a-f0-9]{32}", task_id)
+        ):
             return JSONResponse({"error": "Unknown conversation task."}, status_code=404)
-        token = request.cookies.get(cookie_name(request.state.browser_origin.startswith("https://")))
+        token = request.cookies.get(
+            cookie_name(request.state.browser_origin.startswith("https://"))
+        )
         path = f"/api/voice/v1/sessions/{session_id}/tasks" + (f"/{task_id}" if task_id else "")
         return await forward_voice("GET", path, owner=session_owner(token))
 
     @app.post("/api/voice/v1/sessions/{session_id}/tasks/{task_id}/cancel")
     async def cancel_task(request: Request, session_id: str, task_id: str):
-        if not re.fullmatch(r"[a-f0-9]{32}", session_id) or not re.fullmatch(r"[a-f0-9]{32}", task_id):
+        if not re.fullmatch(r"[a-f0-9]{32}", session_id) or not re.fullmatch(
+            r"[a-f0-9]{32}", task_id
+        ):
             return JSONResponse({"error": "Unknown conversation task."}, status_code=404)
-        token = request.cookies.get(cookie_name(request.state.browser_origin.startswith("https://")))
-        return await forward_voice("POST", f"/api/voice/v1/sessions/{session_id}/tasks/{task_id}/cancel", owner=session_owner(token))
+        token = request.cookies.get(
+            cookie_name(request.state.browser_origin.startswith("https://"))
+        )
+        return await forward_voice(
+            "POST",
+            f"/api/voice/v1/sessions/{session_id}/tasks/{task_id}/cancel",
+            owner=session_owner(token),
+        )
 
     @app.get("/api/voice/v1/settings")
     async def get_profiles():
@@ -433,7 +465,12 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
             value = await request.json()
         except ValueError:
             return JSONResponse({"error": "Invalid download request."}, status_code=422)
-        if not isinstance(value, dict) or set(value) != {"provider"} or not isinstance(value["provider"], str) or value["provider"] not in {"personaplex", "lfm3-audio"}:
+        if (
+            not isinstance(value, dict)
+            or set(value) != {"provider"}
+            or not isinstance(value["provider"], str)
+            or value["provider"] not in {"personaplex", "lfm3-audio"}
+        ):
             return JSONResponse({"error": "Choose a supported model."}, status_code=422)
         return await forward_voice("POST", "/api/voice/v1/downloads", value)
 
@@ -441,7 +478,9 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
     async def download_action(download_id: str, action: str):
         if not re.fullmatch(r"[a-f0-9]{24}", download_id) or action not in {"cancel", "retry"}:
             return JSONResponse({"error": "Unknown download action."}, status_code=404)
-        return await forward_voice("POST", f"/api/voice/v1/downloads/{download_id}/{action}", timeout=15)
+        return await forward_voice(
+            "POST", f"/api/voice/v1/downloads/{download_id}/{action}", timeout=15
+        )
 
     @app.post("/api/voice/v1/providers/{provider_id}/open-folder")
     async def open_model_folder(provider_id: str):
@@ -463,7 +502,13 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
                 value = await request.json()
             except ValueError:
                 return JSONResponse({"error": "Enter a valid access token."}, status_code=422)
-            if not isinstance(value, dict) or set(value) != {"secret"} or not isinstance(value["secret"], str) or not 8 <= len(value["secret"]) <= 512 or any(char in value["secret"] for char in "\r\n"):
+            if (
+                not isinstance(value, dict)
+                or set(value) != {"secret"}
+                or not isinstance(value["secret"], str)
+                or not 8 <= len(value["secret"]) <= 512
+                or any(char in value["secret"] for char in "\r\n")
+            ):
                 return JSONResponse({"error": "Enter a valid access token."}, status_code=422)
         return await forward_voice(request.method, f"/api/voice/v1/credentials/{service}", value)
 
@@ -501,7 +546,11 @@ def create_app(config: Config | None = None, controller: Controller | None = Non
             return
         tasks = []
         try:
-            connection = remote.voice_conversation(owner=session_owner(token)) if versioned else remote.conversation()
+            connection = (
+                remote.voice_conversation(owner=session_owner(token))
+                if versioned
+                else remote.conversation()
+            )
             async with connection as upstream:
                 await socket.accept()
                 connections.setdefault(token, set()).add(socket)

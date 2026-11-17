@@ -9,7 +9,8 @@ export function CredentialsTab() {
       role="tabpanel"
       aria-labelledby="tab-credentials"
       className="settings-panel"
-      hidden={workspace.tab !== "credentials"}>
+      hidden={workspace.tab !== "credentials"}
+    >
       {" "}
       <div className="panel-heading">
         {" "}

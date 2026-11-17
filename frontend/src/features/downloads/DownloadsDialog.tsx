@@ -13,7 +13,8 @@ export function DownloadsDialog() {
       className="downloads-dialog"
       labelledBy="downloads-title"
       open={workspace.downloadsOpen}
-      onClose={runtime.closeDownloads}>
+      onClose={runtime.closeDownloads}
+    >
       <header className="drawer-header" aria-label="Downloads">
         <div>
           <span className="eyebrow">ON YOUR MAC</span>
@@ -33,7 +34,8 @@ export function DownloadsDialog() {
             }
             onClick={() => {
               void runtime.library.clearHistory();
-            }}>
+            }}
+          >
             <Icon name="clear" width={1.6} />
           </button>
           <button
@@ -41,7 +43,8 @@ export function DownloadsDialog() {
             id="close-downloads"
             className="icon-button"
             aria-label="Close downloads"
-            onClick={runtime.closeDownloads}>
+            onClick={runtime.closeDownloads}
+          >
             <Icon name="close" width={1.6} />
           </button>
         </div>

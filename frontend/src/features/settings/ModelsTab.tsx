@@ -25,7 +25,8 @@ export function ModelsTab() {
       role="tabpanel"
       aria-labelledby="tab-models"
       className="settings-panel"
-      hidden={workspace.tab !== "models"}>
+      hidden={workspace.tab !== "models"}
+    >
       {" "}
       <div className="panel-heading">
         {" "}
@@ -41,7 +42,8 @@ export function ModelsTab() {
           aria-label={indicator.label}
           title={indicator.label}
           onClick={() => runtime.openDownloads()}
-          data-state={indicator.state}>
+          data-state={indicator.state}
+        >
           <Icon
             name={indicator.state === "attention" ? "attention" : "download"}
           />
@@ -55,15 +57,15 @@ export function ModelsTab() {
         id="model-provider"
         disabled={view.editingDisabled}
         value={settings.selected}
-        onChange={(event) =>
-          runtime.settings.select(event.currentTarget.value)
-        }>
+        onChange={(event) => runtime.settings.select(event.currentTarget.value)}
+      >
         {settings.providers.length ? (
           settings.providers.map((provider) => (
             <option
               key={provider.id}
               value={provider.id}
-              disabled={!canUseCurrentAudio(provider)}>
+              disabled={!canUseCurrentAudio(provider)}
+            >
               {provider.name +
                 " · " +
                 provider.runtime +
@@ -92,7 +94,8 @@ export function ModelsTab() {
           <span
             id="model-local-state"
             className="pill subtle"
-            data-ready={local}>
+            data-ready={local}
+          >
             {job
               ? downloadLabels[job.state]
               : model?.localState === "verified"
@@ -127,7 +130,8 @@ export function ModelsTab() {
                   "https://huggingface.co/nvidia/personaplex-7b-v1"
                 }
                 target="_blank"
-                rel="noopener noreferrer">
+                rel="noopener noreferrer"
+              >
                 {" "}
                 Hugging Face ↗{" "}
               </a>{" "}
@@ -151,7 +155,8 @@ export function ModelsTab() {
               title={
                 model?.revision ||
                 "Exact files and size are resolved before downloading."
-              }>
+              }
+            >
               {model?.revision
                 ? model.revision.slice(0, 12)
                 : "Resolved before download"}
@@ -173,7 +178,8 @@ export function ModelsTab() {
             }
             onClick={() => {
               void runtime.download();
-            }}>
+            }}
+          >
             {" "}
             <Icon name={local ? "check" : "download"} />{" "}
             <span id="download-label">
@@ -188,7 +194,8 @@ export function ModelsTab() {
             disabled={!model || !reachable || library.openingFolder}
             onClick={() => {
               void runtime.library.openFolder(settings.selected);
-            }}>
+            }}
+          >
             {" "}
             <svg
               viewBox="0 0 24 24"
@@ -197,7 +204,8 @@ export function ModelsTab() {
               strokeWidth="1.6"
               strokeLinecap="round"
               strokeLinejoin="round"
-              aria-hidden="true">
+              aria-hidden="true"
+            >
               {" "}
               <path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />{" "}
             </svg>{" "}

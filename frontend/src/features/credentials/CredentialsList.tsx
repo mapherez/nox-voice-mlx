@@ -79,7 +79,8 @@ function CredentialCard({ service }: { service: Credential }) {
           id={"credential-save-" + service.id}
           className="button secondary"
           disabled={busy || !reachable}
-          onClick={() => act("save")}>
+          onClick={() => act("save")}
+        >
           Save token
         </button>
         <button
@@ -88,7 +89,8 @@ function CredentialCard({ service }: { service: Credential }) {
           className="text-button"
           hidden={service.testSupported === false}
           disabled={busy || !reachable || !service.configured}
-          onClick={() => act("test")}>
+          onClick={() => act("test")}
+        >
           Test access
         </button>
         <button
@@ -96,14 +98,16 @@ function CredentialCard({ service }: { service: Credential }) {
           id={"credential-remove-" + service.id}
           className="text-button"
           disabled={busy || !reachable || !service.configured}
-          onClick={() => act("remove")}>
+          onClick={() => act("remove")}
+        >
           Remove
         </button>
       </div>
       <p
         className="field-help"
         role="status"
-        id={"credential-feedback-" + service.id}>
+        id={"credential-feedback-" + service.id}
+      >
         {library.credentialFeedback[service.id] ?? service.test?.message ?? ""}
       </p>
     </section>

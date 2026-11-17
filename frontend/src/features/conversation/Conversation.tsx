@@ -56,7 +56,8 @@ export function Conversation() {
       <div
         id="login-panel"
         className="login-panel"
-        hidden={Boolean(workspace.session)}>
+        hidden={Boolean(workspace.session)}
+      >
         {" "}
         <a className="button primary google-button" href="/auth/google/start">
           {" "}
@@ -73,7 +74,8 @@ export function Conversation() {
       <div
         className="conversation-actions"
         id="conversation-actions"
-        hidden={!workspace.session}>
+        hidden={!workspace.session}
+      >
         {" "}
         <button
           type="button"
@@ -83,14 +85,16 @@ export function Conversation() {
           disabled={view.conversationDisabled}
           onClick={() => {
             void runtime.audio.start();
-          }}>
+          }}
+        >
           {" "}
           <svg
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.7"
-            aria-hidden="true">
+            aria-hidden="true"
+          >
             {" "}
             <rect x="8" y="3" width="8" height="12" rx="4" />{" "}
             <path d="M5 10a7 7 0 0 0 14 0M12 17v4m-4 0h8" />{" "}
@@ -105,7 +109,8 @@ export function Conversation() {
           className="button secondary"
           hidden={!audio.active}
           aria-pressed={audio.muted}
-          onClick={() => runtime.audio.toggleMute()}>
+          onClick={() => runtime.audio.toggleMute()}
+        >
           {audio.muted ? "Unmute" : "Mute"}
         </button>{" "}
         <button
@@ -113,7 +118,8 @@ export function Conversation() {
           id="end-conversation"
           className="button end-button"
           hidden={!audio.active}
-          onClick={() => runtime.endConversation()}>
+          onClick={() => runtime.endConversation()}
+        >
           {" "}
           <span className="stop-square" aria-hidden="true"></span> End
           conversation{" "}
@@ -125,7 +131,8 @@ export function Conversation() {
         id="engine-hint"
         className="text-button"
         hidden={!workspace.session || audio.busy || view.state === "ready"}
-        onClick={() => runtime.openSettings()}>
+        onClick={() => runtime.openSettings()}
+      >
         {view.state === "unreachable"
           ? "Open Settings to check your controller connection ↗"
           : "Open Settings to load a model ↗"}
@@ -135,13 +142,15 @@ export function Conversation() {
         className="notice"
         role="status"
         aria-live="polite"
-        hidden={!workspace.notice}>
+        hidden={!workspace.notice}
+      >
         {workspace.notice}
       </div>{" "}
       <div
         id="conversation-metrics"
         className="conversation-metrics"
-        hidden={!(workspace.session && audio.active && !audio.checking)}>
+        hidden={!(workspace.session && audio.active && !audio.checking)}
+      >
         {" "}
         <span>
           {" "}

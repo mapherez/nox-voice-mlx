@@ -20,7 +20,8 @@ export function AudioChecks() {
       id="audio-checks"
       className="audio-checks"
       aria-label="Audio checks"
-      hidden={!(workspace.session && audio.active && audio.checking)}>
+      hidden={!(workspace.session && audio.active && audio.checking)}
+    >
       {" "}
       <p className="field-help">
         {" "}
@@ -44,7 +45,8 @@ export function AudioChecks() {
         onPointerCancel={(event) => runtime.hold.endPointer(event.pointerId)}
         onLostPointerCapture={(event) =>
           runtime.hold.endPointer(event.pointerId)
-        }>
+        }
+      >
         {touch ? "Press here to speak" : "Hold Space or press here to speak"}
       </button>{" "}
       <p id="audio-check-state" role="status" aria-live="polite">
@@ -67,9 +69,8 @@ export function AudioChecks() {
         maxLength={2000}
         placeholder="Enter text to check the selected voice."
         value={speech}
-        onChange={(event) =>
-          setSpeech(event.currentTarget.value)
-        }></textarea>{" "}
+        onChange={(event) => setSpeech(event.currentTarget.value)}
+      ></textarea>{" "}
       <div className="engine-buttons">
         {" "}
         <button
@@ -77,7 +78,8 @@ export function AudioChecks() {
           id="read-aloud"
           className="button secondary"
           disabled={!audio.active || audio.recording || !speech.trim()}
-          onClick={() => runtime.audio.speak(speech)}>
+          onClick={() => runtime.audio.speak(speech)}
+        >
           {" "}
           Read aloud{" "}
         </button>{" "}
@@ -86,7 +88,8 @@ export function AudioChecks() {
           id="stop-speech"
           className="button secondary"
           disabled={audio.activity !== "speaking"}
-          onClick={() => runtime.audio.interruptSpeech()}>
+          onClick={() => runtime.audio.interruptSpeech()}
+        >
           {" "}
           Stop speech{" "}
         </button>{" "}

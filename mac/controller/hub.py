@@ -42,13 +42,20 @@ def request(url, token=None, headers=None, method=None):
     except HTTPError as error:
         if error.code in {401, 403}:
             raise DownloadError(
-                "MODEL_ACCESS", "Access denied. Check the Hugging Face credential and accept the model's access terms."
+                "MODEL_ACCESS",
+                "Access denied. Check the Hugging Face credential and accept the model's access terms.",
             ) from None
         if error.code == 429:
-            raise DownloadError("RATE_LIMIT", "Hugging Face rate limit reached. Retry later.") from None
-        raise DownloadError("NETWORK", "The model source could not complete the request. Retry later.") from None
+            raise DownloadError(
+                "RATE_LIMIT", "Hugging Face rate limit reached. Retry later."
+            ) from None
+        raise DownloadError(
+            "NETWORK", "The model source could not complete the request. Retry later."
+        ) from None
     except (OSError, URLError):
-        raise DownloadError("NETWORK", "Cannot reach the model source. Check the Mac's network connection.") from None
+        raise DownloadError(
+            "NETWORK", "Cannot reach the model source. Check the Mac's network connection."
+        ) from None
 
 
 def hub_json(path, token):
@@ -62,7 +69,9 @@ def hub_json(path, token):
             raise ValueError
         return value
     except (ValueError, UnicodeError):
-        raise DownloadError("METADATA", "The model source returned invalid metadata. Retry later.") from None
+        raise DownloadError(
+            "METADATA", "The model source returned invalid metadata. Retry later."
+        ) from None
 
 
 def valid_revision(value):
@@ -89,7 +98,9 @@ def download(url, destination, expected, progress, token=None):
     partial = destination.with_name(destination.name + ".part")
     identity_file = destination.with_name(destination.name + ".part.json")
     if destination.is_symlink() or partial.is_symlink() or identity_file.is_symlink():
-        raise DownloadError("FILES", "A model download path is a symlink. Check the model directory.")
+        raise DownloadError(
+            "FILES", "A model download path is a symlink. Check the model directory."
+        )
     size = expected["size"]
     identity = {key: expected.get(key) for key in ("size", "sha256", "blobId")}
     if destination.is_file() and destination.stat().st_size == size:
@@ -115,14 +126,21 @@ def download(url, destination, expected, progress, token=None):
     progress(offset, 0, "downloading")
     if offset < size:
         if shutil.disk_usage(destination.parent).free < size - offset + 64 * 1024 * 1024:
-            raise DownloadError("DISK_SPACE", "Not enough free disk space on the Mac for this download.")
+            raise DownloadError(
+                "DISK_SPACE", "Not enough free disk space on the Mac for this download."
+            )
         headers = {"Range": f"bytes={offset}-"} if offset else {}
         with request(url, token, headers) as response:
             if offset:
                 if response.status == 206:
-                    match = re.fullmatch(r"bytes (\d+)-(\d+)/(\d+)", response.headers.get("Content-Range", ""))
+                    match = re.fullmatch(
+                        r"bytes (\d+)-(\d+)/(\d+)", response.headers.get("Content-Range", "")
+                    )
                     if not match or int(match[1]) != offset or int(match[3]) != size:
-                        raise DownloadError("RANGE", "The source returned an invalid partial download. Retry the download.")
+                        raise DownloadError(
+                            "RANGE",
+                            "The source returned an invalid partial download. Retry the download.",
+                        )
                 elif response.status == 200:
                     offset = 0  # Range not supported: explicitly restart this file.
                 else:
@@ -136,14 +154,18 @@ def download(url, destination, expected, progress, token=None):
                     output.write(block)
                     now = time.monotonic()
                     if now - last >= 0.25:
-                        progress(received, (received - offset) / max(now - started, 0.001), "downloading")
+                        progress(
+                            received, (received - offset) / max(now - started, 0.001), "downloading"
+                        )
                         last = now
         if received != size:
             raise DownloadError("NETWORK", "The download was interrupted. Retry to resume it.")
     progress(size, 0, "verifying")
     if not checksum(partial, expected):
         partial.unlink(missing_ok=True)
-        raise DownloadError("INTEGRITY", "A file failed its integrity check. Retry to download it again.")
+        raise DownloadError(
+            "INTEGRITY", "A file failed its integrity check. Retry to download it again."
+        )
     partial.replace(destination)
     identity_file.unlink(missing_ok=True)
     progress(size, 0, "downloaded")

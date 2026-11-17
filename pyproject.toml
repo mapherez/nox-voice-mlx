@@ -7,7 +7,14 @@ requires-python = ">=3.12"
 package = false
 
 [dependency-groups]
-dev = ["nox-voice-gateway", "nox-voice-mac", "pytest>=8.3", "pytest-asyncio>=0.25", "ruff>=0.11", "pip-audit>=2.9"]
+dev = [
+  "nox-voice-gateway",
+  "nox-voice-mac",
+  "pytest>=8.3",
+  "pytest-asyncio>=0.25",
+  "ruff>=0.11",
+  "pip-audit>=2.9",
+]
 
 [tool.uv.sources]
 nox-voice-gateway = { path = "gateway", editable = true }
@@ -21,7 +28,12 @@ addopts = "--ignore=tests/mac/test_pytorch_mlx_comparison.py"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-exclude = ["vendor", "mac/engine/personaplex_mlx", "mac/engine/convert_weights.py", "tests/mac/test_pytorch_mlx_comparison.py"]
+exclude = [
+  "vendor",
+  "mac/engine/personaplex_mlx",
+  "mac/engine/convert_weights.py",
+  "tests/mac/test_pytorch_mlx_comparison.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]

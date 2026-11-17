@@ -1,49 +1,17 @@
 {
   "policy": "scripts/ci-policy.mjs",
   "go": false,
-  "vite": [
-    "frontend"
-  ],
+  "vite": ["frontend"],
   "check": [
     {
       "command": "uv",
-      "args": [
-        "run",
-        "--frozen",
-        "ruff",
-        "check",
-        "."
-      ],
+      "args": ["run", "--frozen", "ruff", "check", "."],
       "cwd": "."
     },
     {
       "command": "npm",
-      "args": [
-        "run",
-        "check"
-      ],
+      "args": ["run", "check"],
       "cwd": "frontend"
-    }
-  ],
-  "format": [
-    {
-      "command": "npm",
-      "args": [
-        "run",
-        "format"
-      ],
-      "cwd": "frontend"
-    },
-    {
-      "command": "uv",
-      "args": [
-        "run",
-        "--frozen",
-        "ruff",
-        "format",
-        "."
-      ],
-      "cwd": "."
     }
   ],
   "python": true

@@ -26,8 +26,13 @@ def endpoint(value):
         raise MCPError("Enter a complete HTTP or HTTPS MCP URL.")
     try:
         parsed = urlsplit(value)
-        if (parsed.scheme not in {"http", "https"} or not parsed.hostname
-                or parsed.username is not None or parsed.password is not None or parsed.fragment):
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.fragment
+        ):
             raise ValueError()
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
     except ValueError:
@@ -48,15 +53,22 @@ class MCPClient:
         self.aliases = {}
 
     def _connection(self, timeout=None):
-        implementation = http.client.HTTPSConnection if self.parsed.scheme == "https" else http.client.HTTPConnection
+        implementation = (
+            http.client.HTTPSConnection
+            if self.parsed.scheme == "https"
+            else http.client.HTTPConnection
+        )
         return implementation(self.parsed.hostname, self.port, timeout=timeout or self.timeout)
 
     def _path(self):
         return (self.parsed.path or "/") + ("?" + self.parsed.query if self.parsed.query else "")
 
     def _headers(self):
-        headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream",
-                   "MCP-Protocol-Version": self.version}
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            "MCP-Protocol-Version": self.version,
+        }
         if self.session:
             headers["Mcp-Session-Id"] = self.session
         return headers
@@ -78,7 +90,11 @@ class MCPClient:
             return None
         if "error" in message:
             error = message["error"]
-            raise MCPError(str(error.get("message", "MCP request failed.")) if isinstance(error, dict) else "MCP request failed.")
+            raise MCPError(
+                str(error.get("message", "MCP request failed."))
+                if isinstance(error, dict)
+                else "MCP request failed."
+            )
         if "result" not in message:
             raise MCPError("The server response has no result.")
         return message
@@ -98,19 +114,31 @@ class MCPClient:
                     except OSError:
                         pass
 
-            timer = threading.Timer(max(.01, deadline - time.monotonic()), expire)
+            timer = threading.Timer(max(0.01, deadline - time.monotonic()), expire)
             timer.daemon = True
             timer.start()
             response = connection.getresponse()
             if not 200 <= response.status < 300:
                 if response.status in {401, 403}:
-                    raise MCPError("The MCP server refused access. This experiment supports unauthenticated endpoints only.")
+                    raise MCPError(
+                        "The MCP server refused access. This experiment supports unauthenticated endpoints only."
+                    )
                 if response.status == 404 and self.session:
-                    raise MCPTransportError("The MCP session expired or the endpoint is unavailable. Connect MCP again.")
-                raise MCPTransportError("MCP returned HTTP {}. No execution will be retried automatically.".format(response.status))
+                    raise MCPTransportError(
+                        "The MCP session expired or the endpoint is unavailable. Connect MCP again."
+                    )
+                raise MCPTransportError(
+                    "MCP returned HTTP {}. No execution will be retried automatically.".format(
+                        response.status
+                    )
+                )
             session = response.getheader("Mcp-Session-Id")
             if session is not None:
-                if not session or len(session) > 1024 or any(ord(c) < 33 or ord(c) > 126 for c in session):
+                if (
+                    not session
+                    or len(session) > 1024
+                    or any(ord(c) < 33 or ord(c) > 126 for c in session)
+                ):
                     raise MCPError("The server returned an invalid session identifier.")
                 self.session = session
             if request_id is None:
@@ -151,7 +179,9 @@ class MCPClient:
                 raise MCPError("Expected a JSON or SSE response from the MCP endpoint.")
             raise MCPTransportError("MCP closed the response without a confirmed result.")
         except (OSError, http.client.HTTPException, UnicodeError, json.JSONDecodeError) as error:
-            raise MCPTransportError("MCP connection failed or returned invalid data. The action may have completed; it will not be retried.") from error
+            raise MCPTransportError(
+                "MCP connection failed or returned invalid data. The action may have completed; it will not be retried."
+            ) from error
         finally:
             if timer is not None:
                 timer.cancel()
@@ -166,8 +196,14 @@ class MCPClient:
 
     def connect(self):
         try:
-            result = self.rpc("initialize", {"protocolVersion": self.version, "capabilities": {},
-                              "clientInfo": {"name": "nox-lfm3-audio-experiment", "version": "0.1.0"}})
+            result = self.rpc(
+                "initialize",
+                {
+                    "protocolVersion": self.version,
+                    "capabilities": {},
+                    "clientInfo": {"name": "nox-lfm3-audio-experiment", "version": "0.1.0"},
+                },
+            )
             if not isinstance(result, dict) or result.get("protocolVersion") not in VERSIONS:
                 raise MCPError("The MCP server negotiated an unsupported protocol version.")
             self.version = result["protocolVersion"]
@@ -193,9 +229,14 @@ class MCPClient:
                 raise MCPError("MCP tool pagination did not finish.")
             names, aliases = set(), set()
             for index, tool in enumerate(tools):
-                if (not isinstance(tool, dict) or not isinstance(tool.get("name"), str)
-                        or not tool["name"] or len(tool["name"]) > 128 or tool["name"] in names
-                        or not isinstance(tool.get("inputSchema"), dict)):
+                if (
+                    not isinstance(tool, dict)
+                    or not isinstance(tool.get("name"), str)
+                    or not tool["name"]
+                    or len(tool["name"]) > 128
+                    or tool["name"] in names
+                    or not isinstance(tool.get("inputSchema"), dict)
+                ):
                     raise MCPError("A tool has an invalid name or input schema.")
                 name = tool["name"]
                 names.add(name)
@@ -206,13 +247,23 @@ class MCPClient:
                     suffix += 1
                 aliases.add(alias)
                 self.aliases[alias] = name
-                self.tools.append({"name": name, "title": str(tool.get("title", name))[:200],
-                                   "description": str(tool.get("description", "")),
-                                   "function": {"type": "function", "name": alias,
-                                                "description": str(tool.get("description", "")),
-                                                "parameters": tool["inputSchema"]}})
+                self.tools.append(
+                    {
+                        "name": name,
+                        "title": str(tool.get("title", name))[:200],
+                        "description": str(tool.get("description", "")),
+                        "function": {
+                            "type": "function",
+                            "name": alias,
+                            "description": str(tool.get("description", "")),
+                            "parameters": tool["inputSchema"],
+                        },
+                    }
+                )
             if len(json.dumps([tool["function"] for tool in self.tools])) > 60000:
-                raise MCPError("The tool catalogue is too large for this experiment's context budget.")
+                raise MCPError(
+                    "The tool catalogue is too large for this experiment's context budget."
+                )
             return self
         except Exception:
             self.close()
@@ -247,8 +298,13 @@ class MCPManager:
     def _profile(self):
         if self.client is None:
             return {"connected": False, "tools": []}
-        return {"connected": True, "id": self.connection_id, "url": self.client.url,
-                "name": self.client.name, "tools": self.client.tools}
+        return {
+            "connected": True,
+            "id": self.connection_id,
+            "url": self.client.url,
+            "name": self.client.name,
+            "tools": self.client.tools,
+        }
 
     def profile(self):
         with self.lock:
@@ -284,28 +340,49 @@ class MCPManager:
     def execute(self, connection_id, invocation_id, name, arguments):
         with self.lock:
             if self.client is None or connection_id != self.connection_id:
-                raise MCPError("The MCP connection changed or was disconnected. Reconnect the voice conversation.")
+                raise MCPError(
+                    "The MCP connection changed or was disconnected. Reconnect the voice conversation."
+                )
             if not isinstance(invocation_id, str) or not 1 <= len(invocation_id) <= 256:
                 raise MCPError("Invalid execution identifier.")
-            if not isinstance(name, str) or name not in self.client.aliases or not isinstance(arguments, dict):
+            if (
+                not isinstance(name, str)
+                or name not in self.client.aliases
+                or not isinstance(arguments, dict)
+            ):
                 raise MCPError("Unknown tool or invalid arguments. No call was sent.")
             signature = json.dumps([name, arguments], sort_keys=True, allow_nan=False)
             if invocation_id in self.executions:
                 previous, result = self.executions[invocation_id]
                 if signature != previous:
-                    raise MCPError("This execution identifier was already used with different arguments.")
+                    raise MCPError(
+                        "This execution identifier was already used with different arguments."
+                    )
                 return result
             if len(self.executions) >= 256:
-                raise MCPError("Execution history is full. Disconnect voice and reconnect MCP to continue.")
+                raise MCPError(
+                    "Execution history is full. Disconnect voice and reconnect MCP to continue."
+                )
             try:
                 result = self.client.call(name, arguments)
-                if not isinstance(result, dict) or ("content" not in result and "structuredContent" not in result):
-                    raise MCPTransportError("The tool returned no valid result; its outcome is unknown. No automatic retry.")
-                record = {"name": self.client.aliases[name], "result": result,
-                          "isError": bool(result.get("isError", False)), "uncertain": False}
+                if not isinstance(result, dict) or (
+                    "content" not in result and "structuredContent" not in result
+                ):
+                    raise MCPTransportError(
+                        "The tool returned no valid result; its outcome is unknown. No automatic retry."
+                    )
+                record = {
+                    "name": self.client.aliases[name],
+                    "result": result,
+                    "isError": bool(result.get("isError", False)),
+                    "uncertain": False,
+                }
             except MCPError as error:
-                record = {"name": self.client.aliases[name], "isError": True,
-                          "uncertain": isinstance(error, MCPTransportError),
-                          "result": {"isError": True, "content": [{"type": "text", "text": str(error)}]}}
+                record = {
+                    "name": self.client.aliases[name],
+                    "isError": True,
+                    "uncertain": isinstance(error, MCPTransportError),
+                    "result": {"isError": True, "content": [{"type": "text", "text": str(error)}]},
+                }
             self.executions[invocation_id] = (signature, record)
             return record

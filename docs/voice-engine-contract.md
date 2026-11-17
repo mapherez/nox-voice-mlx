@@ -53,31 +53,31 @@ before advertising agent capabilities for that provider.
 
 ## 3. Existing behavior and target behavior
 
-| Area | Existing | Agreed target |
-| --- | --- | --- |
-| Main webapp | PersonaPlex through the native controller | Both models through the same controller and interface |
-| PersonaPlex | MLX, continuous 24 kHz audio, native full duplex; voice, persona and precision settings | Preserve those capabilities and defaults |
-| LFM3 | Isolated local experiment using pinned llama.cpp/GGUF assets | Integrated provider in the main webapp |
-| LFM3 execution | Model-selected direct calls or one explicitly selected delegated write | Generic executor LLM with discovered tools and dependent calls |
-| Interruption | PersonaPlex native behavior; experiment blocks Space during replies | Preserve PersonaPlex behavior; immediate Space interruption throughout LFM3 replies |
-| Pending work | Experiment blocks the next spoken request | Independent tasks with visible state and queued completion messages |
-| Configuration | Flat PersonaPlex settings; experimental MCP/LLM settings in memory | Versioned settings with independent provider profiles |
-| Completion | Experimental canned clips and model-generated direct replies | Brief, result-grounded speech; full output available separately |
+| Area           | Existing                                                                                | Agreed target                                                                       |
+| -------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Main webapp    | PersonaPlex through the native controller                                               | Both models through the same controller and interface                               |
+| PersonaPlex    | MLX, continuous 24 kHz audio, native full duplex; voice, persona and precision settings | Preserve those capabilities and defaults                                            |
+| LFM3           | Isolated local experiment using pinned llama.cpp/GGUF assets                            | Integrated provider in the main webapp                                              |
+| LFM3 execution | Model-selected direct calls or one explicitly selected delegated write                  | Generic executor LLM with discovered tools and dependent calls                      |
+| Interruption   | PersonaPlex native behavior; experiment blocks Space during replies                     | Preserve PersonaPlex behavior; immediate Space interruption throughout LFM3 replies |
+| Pending work   | Experiment blocks the next spoken request                                               | Independent tasks with visible state and queued completion messages                 |
+| Configuration  | Flat PersonaPlex settings; experimental MCP/LLM settings in memory                      | Versioned settings with independent provider profiles                               |
+| Completion     | Experimental canned clips and model-generated direct replies                            | Brief, result-grounded speech; full output available separately                     |
 
 The old experiment's fixed target tool, product-name aliases, fixed completion
 phrases, and six-round/twelve-call ceilings are not target requirements.
 
 ## 4. Components and placement
 
-| Component | Responsibility |
-| --- | --- |
-| Main frontend | Settings, capture/playback, explicit interruption, task activity and connection state |
-| Web gateway (`gateway/`) | Existing browser authentication, session ownership and fixed transport to the controller |
-| Native controller (`mac/controller/`) | Provider lifecycle, validated settings, conversation ownership and task APIs |
-| Provider adapters (`mac/engine/`) | PersonaPlex MLX or LFM3 runtime, formats, voices and model-specific operations |
-| Task executor on the native host | LLM requests, MCP discovery, argument validation, execution, receipts and context |
-| External LLM service | The configured model endpoint, initially LM Studio; its process remains user-managed |
-| External MCP servers / Suite Gateway | Advertised tools and authoritative product results |
+| Component                             | Responsibility                                                                           |
+| ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Main frontend                         | Settings, capture/playback, explicit interruption, task activity and connection state    |
+| Web gateway (`gateway/`)              | Existing browser authentication, session ownership and fixed transport to the controller |
+| Native controller (`mac/controller/`) | Provider lifecycle, validated settings, conversation ownership and task APIs             |
+| Provider adapters (`mac/engine/`)     | PersonaPlex MLX or LFM3 runtime, formats, voices and model-specific operations           |
+| Task executor on the native host      | LLM requests, MCP discovery, argument validation, execution, receipts and context        |
+| External LLM service                  | The configured model endpoint, initially LM Studio; its process remains user-managed     |
+| External MCP servers / Suite Gateway  | Advertised tools and authoritative product results                                       |
 
 The **web gateway** above is this application's existing Docker component. The
 **Suite Gateway** is the future NoX Suite product. They are different services.
@@ -102,17 +102,17 @@ asset readiness, input/output formats, interaction modes, supported operations,
 settings definitions and reload requirements. Examples of provider IDs are
 `personaplex` and `lfm3-audio`; they are technical adapters, not product routes.
 
-| Capability | PersonaPlex target | LFM3 target |
-| --- | --- | --- |
-| Native continuous conversation | Yes, existing behavior | Not claimed |
-| Push-to-talk command entry | Not required for existing native mode | Yes, Space and equivalent pointer/touch control |
-| User speech transcription for the executor | Not provided by its assistant-text output | Yes, complete-turn transcription |
-| Read supplied text aloud | Not advertised without a validated adapter | Yes, streaming TTS |
-| Generic MCP execution | Not advertised | Through the executor LLM |
-| Input while an executor task is pending | Not applicable | Yes |
-| Voice selection | Existing 18 prepared prompts | Runtime-supported female/male presets initially |
-| Persona/instructions | Existing persona prompt | Separate executor instructions, transcription hints and speech controls |
-| Precision | Existing full/4/5/6/8-bit options | Only verified prepared artifacts; current experiment uses Q8_0 + BF16 projector |
+| Capability                                 | PersonaPlex target                         | LFM3 target                                                                     |
+| ------------------------------------------ | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| Native continuous conversation             | Yes, existing behavior                     | Not claimed                                                                     |
+| Push-to-talk command entry                 | Not required for existing native mode      | Yes, Space and equivalent pointer/touch control                                 |
+| User speech transcription for the executor | Not provided by its assistant-text output  | Yes, complete-turn transcription                                                |
+| Read supplied text aloud                   | Not advertised without a validated adapter | Yes, streaming TTS                                                              |
+| Generic MCP execution                      | Not advertised                             | Through the executor LLM                                                        |
+| Input while an executor task is pending    | Not applicable                             | Yes                                                                             |
+| Voice selection                            | Existing 18 prepared prompts               | Runtime-supported female/male presets initially                                 |
+| Persona/instructions                       | Existing persona prompt                    | Separate executor instructions, transcription hints and speech controls         |
+| Precision                                  | Existing full/4/5/6/8-bit options          | Only verified prepared artifacts; current experiment uses Q8_0 + BF16 projector |
 
 The frontend renders controls from capabilities. The server validates them
 independently. Unsupported settings must return an explicit validation error,
@@ -220,18 +220,18 @@ request's wording and record each step separately from the model's narration.
 
 Task states are:
 
-| State | Meaning |
-| --- | --- |
-| `queued` | Accepted, awaiting capacity or the configured acknowledgement |
-| `planning` | Executor LLM is interpreting the request or next step |
-| `executing` | A specific MCP call has been dispatched |
-| `awaiting_input` | More information or a contract-required confirmation is needed |
-| `cancel_requested` | Stop requested; admitted work may still be finishing |
-| `succeeded` | Required work has confirmed successful results |
-| `partially_succeeded` | Some work succeeded and the requested remainder did not |
-| `failed` | A known failure prevents completion |
-| `cancelled` | Further work stopped and no dispatched effect remains unresolved |
-| `outcome_unknown` | A dispatched operation's outcome could not be established |
+| State                 | Meaning                                                          |
+| --------------------- | ---------------------------------------------------------------- |
+| `queued`              | Accepted, awaiting capacity or the configured acknowledgement    |
+| `planning`            | Executor LLM is interpreting the request or next step            |
+| `executing`           | A specific MCP call has been dispatched                          |
+| `awaiting_input`      | More information or a contract-required confirmation is needed   |
+| `cancel_requested`    | Stop requested; admitted work may still be finishing             |
+| `succeeded`           | Required work has confirmed successful results                   |
+| `partially_succeeded` | Some work succeeded and the requested remainder did not          |
+| `failed`              | A known failure prevents completion                              |
+| `cancelled`           | Further work stopped and no dispatched effect remains unresolved |
+| `outcome_unknown`     | A dispatched operation's outcome could not be established        |
 
 The final five outcome states are terminal. A presentation failure does not turn
 a successful product action into a failed action or justify replaying it.
@@ -364,20 +364,20 @@ into Models, Voice, Credentials and General, with tabs and disclosure controls
 only where useful. Executor & MCP and Notifications follow their capabilities
 when implemented. Do not expose nonfunctional settings.
 
-| Group | Agreed controls and behavior |
-| --- | --- |
-| Model & engine | Provider/model selector; Download/Load/Eject; verified local status; supported precision/artifact choices; resource/status display; native folder action |
-| Credentials | Extensible named service definitions, initially Hugging Face; explicit save/test/replace/remove, private controller storage and status-only reads |
-| Shared conversation | Concise-by-default instructions; preferred input/output languages where supported; provider-appropriate interruption controls |
-| PersonaPlex | Existing persona editor, 18 prepared voices and precision choices; preserve current defaults independently of LFM3 |
-| PersonaPlex advanced | Text temperature/top-k and audio temperature/top-k, exposing the sampling controls already used by its worker; default to existing 0.7/25 and 0.8/250 |
-| LFM3 transcription | Input language or supported auto-detection; user vocabulary/context hints and catalogue-derived app/tool labels as data; literal transcription remains the task |
-| LFM3 speech | Supported output language and voice preset; runtime-supported synthesis instructions; guidance does not guarantee an accent |
-| LFM3 advanced | Only adapter-mapped, validated sampling controls exposed by the pinned runtime; no dummy audio sliders or claims that every runtime has the same parameters |
-| Executor | LLM base URL, model ID, connection test, general assistant instructions and effective supported generation settings |
-| MCP | Multiple named Streamable HTTP connections, discovered identity/catalogue, connect/disconnect/refresh/test; direct or Suite connection role; credential reference when required |
-| Notifications | The progress/completion choices in section 9; transcript/activity visibility |
-| Existing controls | Theme, account/logout, deployment-controlled connection diagnostics and manual lifecycle behavior remain available |
+| Group                | Agreed controls and behavior                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model & engine       | Provider/model selector; Download/Load/Eject; verified local status; supported precision/artifact choices; resource/status display; native folder action                        |
+| Credentials          | Extensible named service definitions, initially Hugging Face; explicit save/test/replace/remove, private controller storage and status-only reads                               |
+| Shared conversation  | Concise-by-default instructions; preferred input/output languages where supported; provider-appropriate interruption controls                                                   |
+| PersonaPlex          | Existing persona editor, 18 prepared voices and precision choices; preserve current defaults independently of LFM3                                                              |
+| PersonaPlex advanced | Text temperature/top-k and audio temperature/top-k, exposing the sampling controls already used by its worker; default to existing 0.7/25 and 0.8/250                           |
+| LFM3 transcription   | Input language or supported auto-detection; user vocabulary/context hints and catalogue-derived app/tool labels as data; literal transcription remains the task                 |
+| LFM3 speech          | Supported output language and voice preset; runtime-supported synthesis instructions; guidance does not guarantee an accent                                                     |
+| LFM3 advanced        | Only adapter-mapped, validated sampling controls exposed by the pinned runtime; no dummy audio sliders or claims that every runtime has the same parameters                     |
+| Executor             | LLM base URL, model ID, connection test, general assistant instructions and effective supported generation settings                                                             |
+| MCP                  | Multiple named Streamable HTTP connections, discovered identity/catalogue, connect/disconnect/refresh/test; direct or Suite connection role; credential reference when required |
+| Notifications        | The progress/completion choices in section 9; transcript/activity visibility                                                                                                    |
+| Existing controls    | Theme, account/logout, deployment-controlled connection diagnostics and manual lifecycle behavior remain available                                                              |
 
 Changing a PersonaPlex persona/voice remains supported; conversational state is
 rebuilt at a clean session boundary. Prompting cannot train a language or add
@@ -595,16 +595,16 @@ deployment findings reported separately in [validation](validation.md).
 
 Current implementation status:
 
-| Stage | Repository status |
-| --- | --- |
-| 1. Provider boundary and versioned settings | Implemented: provider-defined worker module/bootstrap/metadata, independent typed profiles, revision conflicts, authenticated API relay and catalogue-aware controls; existing PersonaPlex audio path retained |
-| 2. LFM3 audio in the main webapp | Implemented: explicit pinned preparation/import, private owned runtime, complete-turn ASR, audio-only TTS, Space/touch interruption and independent audio-check sessions in the existing frontend |
-| 2.1. Model management and Settings | Implemented: both-provider downloads, bounded Download Manager, explicit Load/Eject, private service credentials, native Finder action and responsive Settings tabs; see validation for test coverage |
-| 2.2. React, TypeScript and Vite+ | Complete: modular React UI, typed services, Vite+ toolchain and two-platform delivery checks; user confirmed real deployment parity, including Clear |
-| 3. Generic executor and task store | Implemented with automated acceptance: native LM Studio-compatible executor, multiple discovered direct MCP catalogues, validated dependent calls, scoped bindings/receipts, task APIs/activity and operational Settings; actual LLM/MCP/model acceptance pending. See [stage 3](implementation-stage-3.md) |
-| 4. Background tasks and presentation | Pending |
-| 5. Full customization and compatibility | Pending beyond PersonaPlex controls, LFM3 input/output language, vocabulary and voice controls, and profile/API compatibility delivered in stages 1–2 |
-| 6. Suite acceptance | Pending; Gateway integration follows the Suite contract and actual service availability |
+| Stage                                       | Repository status                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Provider boundary and versioned settings | Implemented: provider-defined worker module/bootstrap/metadata, independent typed profiles, revision conflicts, authenticated API relay and catalogue-aware controls; existing PersonaPlex audio path retained                                                                                              |
+| 2. LFM3 audio in the main webapp            | Implemented: explicit pinned preparation/import, private owned runtime, complete-turn ASR, audio-only TTS, Space/touch interruption and independent audio-check sessions in the existing frontend                                                                                                           |
+| 2.1. Model management and Settings          | Implemented: both-provider downloads, bounded Download Manager, explicit Load/Eject, private service credentials, native Finder action and responsive Settings tabs; see validation for test coverage                                                                                                       |
+| 2.2. React, TypeScript and Vite+            | Complete: modular React UI, typed services, Vite+ toolchain and two-platform delivery checks; user confirmed real deployment parity, including Clear                                                                                                                                                        |
+| 3. Generic executor and task store          | Implemented with automated acceptance: native LM Studio-compatible executor, multiple discovered direct MCP catalogues, validated dependent calls, scoped bindings/receipts, task APIs/activity and operational Settings; actual LLM/MCP/model acceptance pending. See [stage 3](implementation-stage-3.md) |
+| 4. Background tasks and presentation        | Pending                                                                                                                                                                                                                                                                                                     |
+| 5. Full customization and compatibility     | Pending beyond PersonaPlex controls, LFM3 input/output language, vocabulary and voice controls, and profile/API compatibility delivered in stages 1–2                                                                                                                                                       |
+| 6. Suite acceptance                         | Pending; Gateway integration follows the Suite contract and actual service availability                                                                                                                                                                                                                     |
 
 Stages 1 and 2.1 are verified by controller lifecycle/stream/download/credential tests, gateway auth
 and validation tests, frontend provider tests, and disposable browser QA of the
@@ -642,28 +642,28 @@ or per-product pilots. Keep the working PersonaPlex path throughout.
 6. **Suite acceptance:** validate against its contracts and then the real Gateway
    when implemented. Use direct MCP and generic disposable fixtures beforehand.
 
-| Acceptance case | Required result |
-| --- | --- |
-| PersonaPlex without LLM/MCP | Existing full-duplex conversation, voice, persona and precision still work |
-| Main webapp model change | Correct worker/settings/formats switch; no second frontend or URL/config rewrite |
-| Manual lifecycle | Saving/selecting while stopped stays stopped; no autostart installed |
-| Inactive provider edits | Other provider's saved profile and behavior remain intact |
-| Space during any LFM3 speech | Audio stops immediately; new utterance is captured; late old audio is ignored |
-| Touch/mobile and microphone errors | Equivalent control; clear permission/device guidance; assistant-only orb |
-| Compound request | Complete transcript reaches executor; search/filter/action are separate correct steps |
-| Conditional request | Inspect a resource, evaluate returned state, act only when the user's condition holds |
-| Cross-turn references | Resolve the actual previous result set; no invented IDs or unrelated selection |
-| Stale/reconnected source | Invalidate affected references and refresh/clarify without blindly reusing an old ID |
-| Long task plus new utterance | Capture/transcription/UI remain available; jobs retain separate state and visible queuing |
-| More than twelve valid calls | Continue toward the objective without the experiment's fixed step ceiling |
-| Arbitrary MCP catalogue | Add/change a compliant server without app-name rules or product-specific executor code |
-| Success/query/failure | Concise grounded speech; no unsolicited IDs, full generated content or invented explanation |
-| Error/partial/unknown outcome | Accurate distinct status; no success clip or automatic replay of an uncertain write |
-| Progress dispatch choices | Before-notice/overlap behavior matches settings; speech interruption cannot strand a job |
-| End/logout/network loss/Stop | No further dispatch; cooperative cancellation; no false rollback or cross-session result injection |
-| Assets/settings/privacy | Provider isolation, private persisted settings/credentials; no recording or hidden downloads |
-| PersonaPlex/Discord | Existing format and exclusivity preserved; incapable provider fails clearly before streaming |
-| NoX Suite | Dynamic authorized catalogue and real execution through Gateway; no business routing hardcodes |
+| Acceptance case                    | Required result                                                                                    |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| PersonaPlex without LLM/MCP        | Existing full-duplex conversation, voice, persona and precision still work                         |
+| Main webapp model change           | Correct worker/settings/formats switch; no second frontend or URL/config rewrite                   |
+| Manual lifecycle                   | Saving/selecting while stopped stays stopped; no autostart installed                               |
+| Inactive provider edits            | Other provider's saved profile and behavior remain intact                                          |
+| Space during any LFM3 speech       | Audio stops immediately; new utterance is captured; late old audio is ignored                      |
+| Touch/mobile and microphone errors | Equivalent control; clear permission/device guidance; assistant-only orb                           |
+| Compound request                   | Complete transcript reaches executor; search/filter/action are separate correct steps              |
+| Conditional request                | Inspect a resource, evaluate returned state, act only when the user's condition holds              |
+| Cross-turn references              | Resolve the actual previous result set; no invented IDs or unrelated selection                     |
+| Stale/reconnected source           | Invalidate affected references and refresh/clarify without blindly reusing an old ID               |
+| Long task plus new utterance       | Capture/transcription/UI remain available; jobs retain separate state and visible queuing          |
+| More than twelve valid calls       | Continue toward the objective without the experiment's fixed step ceiling                          |
+| Arbitrary MCP catalogue            | Add/change a compliant server without app-name rules or product-specific executor code             |
+| Success/query/failure              | Concise grounded speech; no unsolicited IDs, full generated content or invented explanation        |
+| Error/partial/unknown outcome      | Accurate distinct status; no success clip or automatic replay of an uncertain write                |
+| Progress dispatch choices          | Before-notice/overlap behavior matches settings; speech interruption cannot strand a job           |
+| End/logout/network loss/Stop       | No further dispatch; cooperative cancellation; no false rollback or cross-session result injection |
+| Assets/settings/privacy            | Provider isolation, private persisted settings/credentials; no recording or hidden downloads       |
+| PersonaPlex/Discord                | Existing format and exclusivity preserved; incapable provider fails clearly before streaming       |
+| NoX Suite                          | Dynamic authorized catalogue and real execution through Gateway; no business routing hardcodes     |
 
 Use several spoken paraphrases and actual target languages for compound requests.
 Measure transcription fidelity, time to first audio, interrupt-to-silence,

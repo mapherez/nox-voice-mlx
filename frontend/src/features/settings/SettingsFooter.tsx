@@ -5,14 +5,16 @@ export function SettingsFooter() {
   return (
     <footer
       className="drawer-footer settings-footer"
-      aria-label="Settings actions">
+      aria-label="Settings actions"
+    >
       {" "}
       <div>
         {" "}
         <strong
           id="model-memory-label"
           className="memory-status-label"
-          hidden={workspace.tab !== "models"}>
+          hidden={workspace.tab !== "models"}
+        >
           {view.memoryLabel}
         </strong>{" "}
         <p id="settings-feedback" className="field-help" role="status">
@@ -30,7 +32,8 @@ export function SettingsFooter() {
           onClick={() => {
             if (workspace.tab === "executor") void runtime.executor.load(true);
             else void runtime.settings.load(true);
-          }}>
+          }}
+        >
           {" "}
           Reload saved settings{" "}
         </button>{" "}
@@ -49,7 +52,8 @@ export function SettingsFooter() {
             disabled={view.startDisabled}
             onClick={() => {
               void runtime.engine("start");
-            }}>
+            }}
+          >
             {" "}
             Load{" "}
           </button>{" "}
@@ -60,7 +64,8 @@ export function SettingsFooter() {
             disabled={view.stopDisabled}
             onClick={() => {
               void runtime.engine("stop");
-            }}>
+            }}
+          >
             {" "}
             Eject{" "}
           </button>{" "}
@@ -71,7 +76,8 @@ export function SettingsFooter() {
             disabled={view.restartDisabled}
             onClick={() => {
               void runtime.engine("restart");
-            }}>
+            }}
+          >
             {" "}
             Reload{" "}
           </button>{" "}
@@ -89,7 +95,8 @@ export function SettingsFooter() {
         }
         onClick={() => {
           void runtime.executor.save().then(() => runtime.library.refresh());
-        }}>
+        }}
+      >
         Save settings
       </button>
       <button
@@ -100,7 +107,8 @@ export function SettingsFooter() {
         disabled={view.saveDisabled}
         onClick={() => {
           void runtime.saveSettings();
-        }}>
+        }}
+      >
         {" "}
         Save settings{" "}
       </button>{" "}

@@ -39,7 +39,8 @@ export function SettingsTabs() {
       className="settings-tabs"
       role="tablist"
       aria-label="Settings sections"
-      aria-orientation={mobile ? "horizontal" : "vertical"}>
+      aria-orientation={mobile ? "horizontal" : "vertical"}
+    >
       {" "}
       <button
         type="button"
@@ -53,7 +54,8 @@ export function SettingsTabs() {
         onKeyDown={(event) => navigate(event, 0)}
         ref={(node) => {
           buttons.current[0] = node;
-        }}>
+        }}
+      >
         {" "}
         <svg
           viewBox="0 0 24 24"
@@ -62,7 +64,8 @@ export function SettingsTabs() {
           strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
-          aria-hidden="true">
+          aria-hidden="true"
+        >
           {" "}
           <rect x="3" y="3" width="18" height="7" rx="2" />{" "}
           <rect x="3" y="14" width="18" height="7" rx="2" />{" "}
@@ -82,7 +85,8 @@ export function SettingsTabs() {
         onKeyDown={(event) => navigate(event, 1)}
         ref={(node) => {
           buttons.current[1] = node;
-        }}>
+        }}
+      >
         {" "}
         <svg
           viewBox="0 0 24 24"
@@ -91,7 +95,8 @@ export function SettingsTabs() {
           strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
-          aria-hidden="true">
+          aria-hidden="true"
+        >
           {" "}
           <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8" />{" "}
         </svg>{" "}
@@ -109,7 +114,8 @@ export function SettingsTabs() {
         onKeyDown={(event) => navigate(event, 2)}
         ref={(node) => {
           buttons.current[2] = node;
-        }}>
+        }}
+      >
         {" "}
         <svg
           viewBox="0 0 24 24"
@@ -118,7 +124,8 @@ export function SettingsTabs() {
           strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
-          aria-hidden="true">
+          aria-hidden="true"
+        >
           {" "}
           <circle cx="8" cy="8" r="5" />{" "}
           <path d="m12 12 9 9m-4-4 3-3m-6 0 3-3" />{" "}
@@ -137,7 +144,8 @@ export function SettingsTabs() {
         onKeyDown={(event) => navigate(event, 3)}
         ref={(node) => {
           buttons.current[3] = node;
-        }}>
+        }}
+      >
         {" "}
         <svg
           viewBox="0 0 24 24"
@@ -146,7 +154,8 @@ export function SettingsTabs() {
           strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
-          aria-hidden="true">
+          aria-hidden="true"
+        >
           {" "}
           <path d="M4 6h16M4 12h16M4 18h16" /> <circle
             cx="9"
@@ -169,7 +178,8 @@ export function SettingsTabs() {
         onKeyDown={(event) => navigate(event, 4)}
         ref={(node) => {
           buttons.current[4] = node;
-        }}>
+        }}
+      >
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -177,7 +187,8 @@ export function SettingsTabs() {
           strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
-          aria-hidden="true">
+          aria-hidden="true"
+        >
           <path d="m8 4-6 8 6 8m8-16 6 8-6 8m-3-16-2 16" />
         </svg>
         <span>Executor &amp; MCP</span>

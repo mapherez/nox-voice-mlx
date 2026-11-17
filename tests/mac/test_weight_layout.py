@@ -141,9 +141,7 @@ def test_cli_migration_uses_configured_root_without_changing_settings(tmp_path, 
     save_config(config_path, config)
     original = config_path.read_bytes()
     (weights / "model.safetensors").write_bytes(b"model")
-    monkeypatch.setattr(
-        sys, "argv", ["nox-voice", "--config", str(config_path), "migrate-weights"]
-    )
+    monkeypatch.setattr(sys, "argv", ["nox-voice", "--config", str(config_path), "migrate-weights"])
     cli.main()
     assert (weights / "personaplex/model.safetensors").read_bytes() == b"model"
     assert config_path.read_bytes() == original

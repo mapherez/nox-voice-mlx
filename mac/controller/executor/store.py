@@ -20,7 +20,9 @@ def pointer(value, path):
             value = value[int(key)] if isinstance(value, list) and key.isdigit() else value[key]
         return copy.deepcopy(value)
     except (KeyError, IndexError, TypeError, ValueError):
-        raise ExecutionError("The referenced value is missing. Refresh the source result.") from None
+        raise ExecutionError(
+            "The referenced value is missing. Refresh the source result."
+        ) from None
 
 
 def bind(arguments, bindings, references, identities):
@@ -32,13 +34,23 @@ def bind(arguments, bindings, references, identities):
         if not isinstance(binding, dict) or set(binding) != {"target", "reference", "pointer"}:
             raise ExecutionError("Invalid structured-result binding.")
         reference = references.get(binding["reference"])
-        if reference is None or not reference.get("valid", True) or identities.get(reference["connection"]) != reference["identity"]:
+        if (
+            reference is None
+            or not reference.get("valid", True)
+            or identities.get(reference["connection"]) != reference["identity"]
+        ):
             raise ExecutionError("The reference is stale or belongs to another connection/session.")
         replacement = pointer(reference["value"], binding["pointer"])
         target = binding["target"]
         if not isinstance(target, str) or target in used:
             raise ExecutionError("Bindings must have distinct JSON Pointer targets.")
-        if any(not target or not other or target.startswith(other + "/") or other.startswith(target + "/") for other in used):
+        if any(
+            not target
+            or not other
+            or target.startswith(other + "/")
+            or other.startswith(target + "/")
+            for other in used
+        ):
             raise ExecutionError("Overlapping reference bindings are ambiguous.")
         used.add(target)
         if target == "":
@@ -58,7 +70,9 @@ def bind(arguments, bindings, references, identities):
                 else:
                     cursor[key] = replacement
             except (KeyError, IndexError, TypeError, ValueError):
-                raise ExecutionError("The binding target does not exist in the arguments.") from None
+                raise ExecutionError(
+                    "The binding target does not exist in the arguments."
+                ) from None
     if not isinstance(value, dict):
         raise ExecutionError("Resolved tool arguments must be an object.")
     return value
@@ -85,11 +99,26 @@ class TaskStore:
         if pending >= self.limits.maxPending:
             raise ExecutionError("The task queue is full. Wait for a task to finish.")
         if len(self.tasks) >= self.limits.maxTasks or self.size() >= self.limits.memoryBytes:
-            raise ExecutionError("Conversation activity memory is full. End this conversation before starting another.")
-        task = {"taskId": secrets.token_hex(16), "sessionId": self.session_id, "turnId": turn_id,
-            "transcript": transcript, "settingsRevision": revision, "catalogues": identities.copy(),
-            "endpointIdentity": endpoint_identity, "state": "queued", "steps": [], "references": [],
-            "output": "", "speech": "", "error": "", "presentation": "pending", "createdAt": time.time()}
+            raise ExecutionError(
+                "Conversation activity memory is full. End this conversation before starting another."
+            )
+        task = {
+            "taskId": secrets.token_hex(16),
+            "sessionId": self.session_id,
+            "turnId": turn_id,
+            "transcript": transcript,
+            "settingsRevision": revision,
+            "catalogues": identities.copy(),
+            "endpointIdentity": endpoint_identity,
+            "state": "queued",
+            "steps": [],
+            "references": [],
+            "output": "",
+            "speech": "",
+            "error": "",
+            "presentation": "pending",
+            "createdAt": time.time(),
+        }
         if self.size() + len(encode(task).encode()) + 1024 > self.limits.memoryBytes:
             raise ExecutionError("Conversation activity memory is full. No task was admitted.")
         self.tasks[task["taskId"]] = task
@@ -97,10 +126,19 @@ class TaskStore:
 
     def reference(self, task, step, connection, value):
         key = secrets.token_hex(16)
-        self.references[key] = {"connection": connection.settings.id, "identity": connection.identity,
-            "taskId": task["taskId"], "invocationId": step["invocationId"], "value": copy.deepcopy(value)}
+        self.references[key] = {
+            "connection": connection.settings.id,
+            "identity": connection.identity,
+            "taskId": task["taskId"],
+            "invocationId": step["invocationId"],
+            "value": copy.deepcopy(value),
+        }
         task["references"].append(key)
         return key
 
     def snapshot(self):
-        return {"sessionId": self.session_id, "closed": self.closed, "tasks": copy.deepcopy(list(self.tasks.values()))}
+        return {
+            "sessionId": self.session_id,
+            "closed": self.closed,
+            "tasks": copy.deepcopy(list(self.tasks.values())),
+        }

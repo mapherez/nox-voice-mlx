@@ -15,7 +15,8 @@ export function AssistantIndicator() {
     <div
       className="assistant-indicator"
       id="assistant-indicator"
-      data-speaking={speaking}>
+      data-speaking={speaking}
+    >
       <span />
       <span id="assistant-label">
         {active

@@ -22,15 +22,29 @@ def test_clear_history_persists_and_preserves_files_active_jobs_and_winding_down
     model.write_bytes(b"downloaded model")
     partial = model.with_suffix(".part")
     partial.write_bytes(b"pending download")
-    library.jobs = {str(index): {"id": str(index), "provider": "lfm3-audio", "state": state}
-        for index, state in enumerate(["completed", "failed", "cancelled", "interrupted", "downloading", "cancelling", "cancelled"])}
+    library.jobs = {
+        str(index): {"id": str(index), "provider": "lfm3-audio", "state": state}
+        for index, state in enumerate(
+            [
+                "completed",
+                "failed",
+                "cancelled",
+                "interrupted",
+                "downloading",
+                "cancelling",
+                "cancelled",
+            ]
+        )
+    }
     library.tasks["6"] = object()  # Its cancelled worker is still releasing resources.
     assert {job["id"] for job in library.clear_finished()["jobs"]} == {"4", "5", "6"}
     assert model.read_bytes() == b"downloaded model" and partial.read_bytes() == b"pending download"
     assert set(ModelLibrary(SimpleNamespace(config=config)).jobs) == {"4", "5", "6"}
 
 
-def test_clear_history_reports_persistence_errors_without_losing_memory_state(tmp_path, monkeypatch):
+def test_clear_history_reports_persistence_errors_without_losing_memory_state(
+    tmp_path, monkeypatch
+):
     library = ModelLibrary(SimpleNamespace(config=ControllerConfig(data_dir=tmp_path)))
     library.jobs["finished"] = {"id": "finished", "provider": "personaplex", "state": "completed"}
 
@@ -50,7 +64,11 @@ def test_clear_downloads_api_removes_entries_without_ejecting_or_touching_assets
     model = config.weights_dir / "personaplex/model.safetensors"
     model.parent.mkdir(parents=True)
     model.write_bytes(b"keep model")
-    manager.library.jobs["completed"] = {"id": "completed", "provider": "personaplex", "state": "completed"}
+    manager.library.jobs["completed"] = {
+        "id": "completed",
+        "provider": "personaplex",
+        "state": "completed",
+    }
     with TestClient(create_app(config, manager)) as client:
         assert client.delete("/api/voice/v1/downloads").json() == {"jobs": []}
         assert manager.state == "ready" and manager.running_provider == "personaplex"
@@ -65,7 +83,9 @@ class Response(io.BytesIO):
 
 
 @pytest.mark.parametrize("range_supported", [False, True])
-def test_partial_download_resumes_or_restarts_without_duplicating_bytes(tmp_path, monkeypatch, range_supported):
+def test_partial_download_resumes_or_restarts_without_duplicating_bytes(
+    tmp_path, monkeypatch, range_supported
+):
     import hashlib
 
     body = b"a verified complete model"
@@ -77,10 +97,16 @@ def test_partial_download_resumes_or_restarts_without_duplicating_bytes(tmp_path
 
     def request(url, token, headers):
         calls.append(headers)
-        return Response(body[8:], 206, {"Content-Range": f"bytes 8-{len(body)-1}/{len(body)}"}) if range_supported else Response(body)
+        return (
+            Response(body[8:], 206, {"Content-Range": f"bytes 8-{len(body) - 1}/{len(body)}"})
+            if range_supported
+            else Response(body)
+        )
 
     monkeypatch.setattr(hub, "request", request)
-    hub.download("https://source.invalid/model", target, expected, lambda *value: progress.append(value))
+    hub.download(
+        "https://source.invalid/model", target, expected, lambda *value: progress.append(value)
+    )
     assert calls == [{"Range": "bytes=8-"}]
     assert target.read_bytes() == body
     assert not target.with_suffix(".gguf.part").exists()
@@ -90,17 +116,31 @@ def test_partial_download_resumes_or_restarts_without_duplicating_bytes(tmp_path
 def test_invalid_range_cannot_append_unrelated_bytes(tmp_path, monkeypatch):
     target = tmp_path / "model"
     (tmp_path / "model.part").write_bytes(b"saved")
-    (tmp_path / "model.part.json").write_text(json.dumps({"size": 10, "sha256": "0"*64, "blobId": None}))
-    monkeypatch.setattr(hub, "request", lambda *_: Response(b"wrong", 206, {"Content-Range": "bytes 0-4/10"}))
+    (tmp_path / "model.part.json").write_text(
+        json.dumps({"size": 10, "sha256": "0" * 64, "blobId": None})
+    )
+    monkeypatch.setattr(
+        hub, "request", lambda *_: Response(b"wrong", 206, {"Content-Range": "bytes 0-4/10"})
+    )
     with pytest.raises(hub.DownloadError, match="invalid partial"):
-        hub.download("https://example.invalid/model", target, {"size": 10, "sha256": "0"*64}, lambda *_: None)
+        hub.download(
+            "https://example.invalid/model",
+            target,
+            {"size": 10, "sha256": "0" * 64},
+            lambda *_: None,
+        )
     assert not target.exists() and (tmp_path / "model.part").read_bytes() == b"saved"
 
 
 def test_bad_checksum_is_never_installed(tmp_path, monkeypatch):
     monkeypatch.setattr(hub, "request", lambda *_: Response(b"bad"))
     with pytest.raises(hub.DownloadError, match="integrity"):
-        hub.download("https://example.invalid/model", tmp_path / "model", {"size": 3, "sha256": "0"*64}, lambda *_: None)
+        hub.download(
+            "https://example.invalid/model",
+            tmp_path / "model",
+            {"size": 3, "sha256": "0" * 64},
+            lambda *_: None,
+        )
     assert not (tmp_path / "model").exists() and not (tmp_path / "model.part").exists()
 
 
@@ -108,7 +148,7 @@ def test_a_different_artifact_identity_restarts_instead_of_appending(tmp_path, m
     import hashlib
 
     (tmp_path / "model.part").write_bytes(b"unrelated artifact")
-    (tmp_path / "model.part.json").write_text(json.dumps({"size": 18, "sha256": "0"*64}))
+    (tmp_path / "model.part.json").write_text(json.dumps({"size": 18, "sha256": "0" * 64}))
     headers = []
 
     def request(url, token, values):
@@ -116,7 +156,12 @@ def test_a_different_artifact_identity_restarts_instead_of_appending(tmp_path, m
         return Response(b"new model")
 
     monkeypatch.setattr(hub, "request", request)
-    hub.download("https://example.invalid/model", tmp_path / "model", {"size": 9, "sha256": hashlib.sha256(b"new model").hexdigest()}, lambda *_: None)
+    hub.download(
+        "https://example.invalid/model",
+        tmp_path / "model",
+        {"size": 9, "sha256": hashlib.sha256(b"new model").hexdigest()},
+        lambda *_: None,
+    )
     assert headers == [{}] and (tmp_path / "model").read_bytes() == b"new model"
 
 
@@ -124,10 +169,14 @@ def test_redirect_drops_huggingface_token_for_other_hosts():
     from urllib.request import Request
 
     source = Request("https://huggingface.co/model", headers={"Authorization": "Bearer secret"})
-    result = hub.SafeRedirect().redirect_request(source, None, 302, "Found", {}, "https://cdn.example/file?signature=opaque")
+    result = hub.SafeRedirect().redirect_request(
+        source, None, 302, "Found", {}, "https://cdn.example/file?signature=opaque"
+    )
     assert not result.has_header("Authorization")
     with pytest.raises(hub.DownloadError, match="insecure"):
-        hub.SafeRedirect().redirect_request(source, None, 302, "Found", {}, "http://cdn.example/file")
+        hub.SafeRedirect().redirect_request(
+            source, None, 302, "Found", {}, "http://cdn.example/file"
+        )
 
 
 def test_credentials_private_status_only_replace_remove_and_validation_redaction(tmp_path):
@@ -147,8 +196,18 @@ def test_credentials_private_status_only_replace_remove_and_validation_redaction
         assert "replacement" not in (tmp_path / "credentials.json").read_text()
 
 
-@pytest.mark.parametrize("failure, state", [("invalid", "invalid"), ("access", "access_required"), ("network", "network_error"), (None, "valid")])
-def test_credential_test_distinguishes_identity_model_access_and_network(tmp_path, monkeypatch, failure, state):
+@pytest.mark.parametrize(
+    "failure, state",
+    [
+        ("invalid", "invalid"),
+        ("access", "access_required"),
+        ("network", "network_error"),
+        (None, "valid"),
+    ],
+)
+def test_credential_test_distinguishes_identity_model_access_and_network(
+    tmp_path, monkeypatch, failure, state
+):
     store = Credentials(ControllerConfig(data_dir=tmp_path))
     store.save("huggingface", "hf_testToken12345")
 
@@ -183,8 +242,19 @@ def test_slow_credential_test_cannot_certify_a_replacement(tmp_path, monkeypatch
     assert store.describe()["services"][0]["test"] is None
 
 
-def test_credential_registry_supports_other_services_without_huggingface_format(tmp_path, monkeypatch):
-    monkeypatch.setitem(credentials.SERVICES, "fixture-service", {"id": "fixture-service", "name": "Fixture service", "fieldLabel": "API key", "help": "Fixture"})
+def test_credential_registry_supports_other_services_without_huggingface_format(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setitem(
+        credentials.SERVICES,
+        "fixture-service",
+        {
+            "id": "fixture-service",
+            "name": "Fixture service",
+            "fieldLabel": "API key",
+            "help": "Fixture",
+        },
+    )
     store = Credentials(ControllerConfig(data_dir=tmp_path))
     result = store.save("fixture-service", "api_fixtureSecret123")
     entry = next(item for item in result["services"] if item["id"] == "fixture-service")
@@ -195,7 +265,9 @@ def test_credential_registry_supports_other_services_without_huggingface_format(
     assert store.secret("fixture-service") is None
 
 
-def test_personaplex_worker_prepares_complete_verified_installation_without_exposing_token(tmp_path, monkeypatch):
+def test_personaplex_worker_prepares_complete_verified_installation_without_exposing_token(
+    tmp_path, monkeypatch
+):
     import hashlib
     import tarfile
 
@@ -211,16 +283,32 @@ def test_personaplex_worker_prepares_complete_verified_installation_without_expo
             bundle.addfile(member, io.BytesIO(content))
     contents = {name: b"fixture model" for name in model_files.ASSETS}
     contents["voices.tgz"] = archive.getvalue()
-    files = [{"name": name, "size": len(body), "sha256": hashlib.sha256(body).hexdigest()} for name, body in contents.items()]
-    monkeypatch.setattr(model_files, "artifact_manifest", lambda: {"revision": "a"*40, "files": files})
-    monkeypatch.setattr(hub, "hub_json", lambda *_: {"sha": "a"*40, "siblings": [
-        {"rfilename": item["name"], "lfs": {"size": item["size"], "sha256": item["sha256"]}} for item in files]})
+    files = [
+        {"name": name, "size": len(body), "sha256": hashlib.sha256(body).hexdigest()}
+        for name, body in contents.items()
+    ]
+    monkeypatch.setattr(
+        model_files, "artifact_manifest", lambda: {"revision": "a" * 40, "files": files}
+    )
+    monkeypatch.setattr(
+        hub,
+        "hub_json",
+        lambda *_: {
+            "sha": "a" * 40,
+            "siblings": [
+                {"rfilename": item["name"], "lfs": {"size": item["size"], "sha256": item["sha256"]}}
+                for item in files
+            ],
+        },
+    )
     monkeypatch.setattr(hub, "request", lambda url, *_: Response(contents[url.rsplit("/", 1)[-1]]))
     events = []
-    monkeypatch.setattr(download_worker, "emit", lambda **value: events.append(json.loads(json.dumps(value))))
+    monkeypatch.setattr(
+        download_worker, "emit", lambda **value: events.append(json.loads(json.dumps(value)))
+    )
     root = tmp_path / "personaplex"
     download_worker.run("personaplex", root, "hf_neverExposeThis123")
-    assert model_files.verify_model(root)["revision"] == "a"*40
+    assert model_files.verify_model(root)["revision"] == "a" * 40
     assert len(list((root / "voices_cpu").glob("*.pt"))) == 18
     assert events[-1] == {"phase": "complete"}
     assert "hf_neverExpose" not in json.dumps(events)
@@ -236,7 +324,9 @@ async def test_download_owned_process_token_stdin_and_recovery_after_restart(tmp
     class Process:
         returncode = None
         stdout = asyncio.StreamReader()
-        stdin = SimpleNamespace(write=received.extend, drain=lambda: asyncio.sleep(0), close=lambda: None)
+        stdin = SimpleNamespace(
+            write=received.extend, drain=lambda: asyncio.sleep(0), close=lambda: None
+        )
 
         async def wait(self):
             await waiting.wait()
@@ -286,7 +376,15 @@ async def test_folder_action_opens_only_provider_directory_in_native_finder(tmp_
     original_stat = model_library.os.stat
     monkeypatch.setattr(model_library.sys, "platform", "darwin")
     monkeypatch.setattr(model_library.os, "getuid", lambda: 501)
-    monkeypatch.setattr(model_library.os, "stat", lambda path, *args, **kwargs: SimpleNamespace(st_uid=501) if str(path) == "/dev/console" else original_stat(path, *args, **kwargs))
+    monkeypatch.setattr(
+        model_library.os,
+        "stat",
+        lambda path, *args, **kwargs: (
+            SimpleNamespace(st_uid=501)
+            if str(path) == "/dev/console"
+            else original_stat(path, *args, **kwargs)
+        ),
+    )
     monkeypatch.setattr(asyncio, "create_subprocess_exec", spawn)
     try:
         assert "Finder" in (await manager.library.open_folder("lfm3-audio"))["message"]

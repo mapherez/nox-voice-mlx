@@ -21,7 +21,8 @@ export function Header() {
       <div
         className="header-actions"
         id="signed-in-actions"
-        hidden={!workspace.session}>
+        hidden={!workspace.session}
+      >
         {" "}
         <button
           type="button"
@@ -29,7 +30,8 @@ export function Header() {
           id="engine-badge"
           aria-label="Open engine settings"
           onClick={() => runtime.openSettings()}
-          data-state={view.state}>
+          data-state={view.state}
+        >
           {" "}
           <span className="status-dot"></span>{" "}
           <span id="header-state">{view.stateLabel}</span>{" "}
@@ -41,7 +43,8 @@ export function Header() {
           aria-label={indicator.label}
           title={indicator.label}
           onClick={() => runtime.openDownloads()}
-          data-state={indicator.state}>
+          data-state={indicator.state}
+        >
           {" "}
           <span id="downloads-icon">
             <Icon
@@ -51,7 +54,8 @@ export function Header() {
           <span
             id="download-count"
             className="download-count"
-            hidden={!indicator.count}>
+            hidden={!indicator.count}
+          >
             {String(indicator.count)}
           </span>{" "}
         </button>{" "}
@@ -61,14 +65,16 @@ export function Header() {
           id="open-settings"
           aria-label="Open settings"
           title="Settings"
-          onClick={() => runtime.openSettings()}>
+          onClick={() => runtime.openSettings()}
+        >
           {" "}
           <svg
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.6"
-            aria-hidden="true">
+            aria-hidden="true"
+          >
             {" "}
             <path d="m9.5 3-.8 2.5-2.5.6-2.1 2.7 1.4 2.2-.1 2.5-1.4 2.2 2 2.8 2.6.6 1.5 2.1h3.8l1.4-2.2 2.6-.6 2-2.8-1.4-2.1v-2.6l1.4-2.1-2-2.8-2.6-.6L14.5 3z" />{" "}
             <circle cx="12" cy="12" r="3.1" />{" "}
@@ -78,7 +84,8 @@ export function Header() {
       <span
         className="header-note"
         id="header-note"
-        hidden={Boolean(workspace.session)}>
+        hidden={Boolean(workspace.session)}
+      >
         {" "}
         Your personal voice workspace{" "}
       </span>{" "}

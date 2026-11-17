@@ -34,8 +34,22 @@ def test_lfm3_transcript_executor_dependent_mcp_calls_and_browser_ownership(conf
     bearer = "fixture-private-mcp-key"
     transcript = 'Procura os itens com o título "Olá Mundo" e remove os resultados.'
     tool_definitions = [
-        {"name": "search", "inputSchema": {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}},
-        {"name": "remove", "inputSchema": {"type": "object", "properties": {"id": {"type": "string"}, "revision": {"type": "integer"}}, "required": ["id", "revision"]}},
+        {
+            "name": "search",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"title": {"type": "string"}},
+                "required": ["title"],
+            },
+        },
+        {
+            "name": "remove",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}, "revision": {"type": "integer"}},
+                "required": ["id", "revision"],
+            },
+        },
     ]
 
     @external.post("/mcp")
@@ -44,16 +58,24 @@ def test_lfm3_transcript_executor_dependent_mcp_calls_and_browser_ownership(conf
         body = await request.json()
         if "id" not in body:
             from fastapi.responses import Response
+
             return Response(status_code=202)
         method = body["method"]
         if method == "initialize":
-            result = {"protocolVersion": "2025-11-25", "serverInfo": {"name": "Unrelated generic fixture", "version": "1"}, "capabilities": {"tools": {}}}
+            result = {
+                "protocolVersion": "2025-11-25",
+                "serverInfo": {"name": "Unrelated generic fixture", "version": "1"},
+                "capabilities": {"tools": {}},
+            }
         elif method == "tools/list":
             result = {"tools": tool_definitions}
         else:
             assert method == "tools/call"
             tool_calls.append(body["params"])
-            result = {"content": [], "structuredContent": {"id": "authoritative-id", "revision": 19, "echo": bearer}}
+            result = {
+                "content": [],
+                "structuredContent": {"id": "authoritative-id", "revision": 19, "echo": bearer},
+            }
         return {"jsonrpc": "2.0", "id": body["id"], "result": result}
 
     @external.get("/v1/models")
@@ -66,17 +88,59 @@ def test_lfm3_transcript_executor_dependent_mcp_calls_and_browser_ownership(conf
         llm_requests.append(body)
         assert bearer not in json.dumps(body)
         messages = body["messages"]
-        results = [json.loads(message["content"]) for message in messages if message["role"] == "tool"]
+        results = [
+            json.loads(message["content"]) for message in messages if message["role"] == "tool"
+        ]
         if len(results) < 2:
             index = len(results)
-            arguments = {"arguments": {"title": "Olá Mundo"}} if index == 0 else {"arguments": {}, "bindings": [
-                {"target": "/id", "reference": results[-1]["reference"], "pointer": "/id"},
-                {"target": "/revision", "reference": results[-1]["reference"], "pointer": "/revision"}]}
-            answer = {"role": "assistant", "content": None, "tool_calls": [{"id": f"call-{index}", "type": "function",
-                "function": {"name": body["tools"][index]["function"]["name"], "arguments": json.dumps(arguments)}}]}
+            arguments = (
+                {"arguments": {"title": "Olá Mundo"}}
+                if index == 0
+                else {
+                    "arguments": {},
+                    "bindings": [
+                        {"target": "/id", "reference": results[-1]["reference"], "pointer": "/id"},
+                        {
+                            "target": "/revision",
+                            "reference": results[-1]["reference"],
+                            "pointer": "/revision",
+                        },
+                    ],
+                }
+            )
+            answer = {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": f"call-{index}",
+                        "type": "function",
+                        "function": {
+                            "name": body["tools"][index]["function"]["name"],
+                            "arguments": json.dumps(arguments),
+                        },
+                    }
+                ],
+            }
         else:
-            answer = {"role": "assistant", "content": json.dumps({"status": "succeeded", "output": "Os itens foram removidos.", "speech": "Feito."})}
-        return {"choices": [{"finish_reason": "tool_calls" if "tool_calls" in answer else "stop", "message": answer}]}
+            answer = {
+                "role": "assistant",
+                "content": json.dumps(
+                    {
+                        "status": "succeeded",
+                        "output": "Os itens foram removidos.",
+                        "speech": "Feito.",
+                    }
+                ),
+            }
+        return {
+            "choices": [
+                {
+                    "finish_reason": "tool_calls" if "tool_calls" in answer else "stop",
+                    "message": answer,
+                }
+            ]
+        }
 
     class Runtime:
         ready, process = True, None
@@ -92,42 +156,104 @@ def test_lfm3_transcript_executor_dependent_mcp_calls_and_browser_ownership(conf
 
     worker_token = "owned-fixture-worker-token-" * 2
     bundle = create_certificates(tmp_path / "tls", "127.0.0.1")
-    with running(external) as external_port, running(audio_app(Runtime(), LFM3Settings(), worker_token)) as worker_port:
+    with (
+        running(external) as external_port,
+        running(audio_app(Runtime(), LFM3Settings(), worker_token)) as worker_port,
+    ):
         native = ControllerConfig(worker_port=worker_port, data_dir=tmp_path / "native")
         manager = Supervisor(native)
         manager.configuration = VoiceConfiguration(selectedProvider="lfm3-audio", revision=3)
         manager.state, manager._token = "ready", worker_token
-        with running(controller_app(native, manager), ssl_certfile=str(bundle.parent / "server.crt"),
-                ssl_keyfile=str(bundle.parent / "server.key"), ssl_ca_certs=str(bundle / "ca.crt"), ssl_cert_reqs=ssl.CERT_REQUIRED) as port:
-            web_config = replace(config, controller_url=f"https://127.0.0.1:{port}",
-                ca_file=bundle / "ca.crt", cert_file=bundle / "client.crt", key_file=bundle / "client.key")
+        with running(
+            controller_app(native, manager),
+            ssl_certfile=str(bundle.parent / "server.crt"),
+            ssl_keyfile=str(bundle.parent / "server.key"),
+            ssl_ca_certs=str(bundle / "ca.crt"),
+            ssl_cert_reqs=ssl.CERT_REQUIRED,
+        ) as port:
+            web_config = replace(
+                config,
+                controller_url=f"https://127.0.0.1:{port}",
+                ca_file=bundle / "ca.crt",
+                cert_file=bundle / "client.crt",
+                key_file=bundle / "client.key",
+            )
             app = gateway_app(web_config)
             with TestClient(app, base_url=config.public_url) as client:
                 token = app.state.sessions.create(config.owner_email, "fixture", config.public_url)
                 client.cookies.set(COOKIE, token, domain="voice.test", path="/")
-                headers = {"Origin": config.public_url, "X-CSRF-Token": client.get("/api/session").json()["csrfToken"]}
-                executor = ExecutorSettings(enabled=True, llm={"model": "fixture-executor", "baseUrl": f"http://127.0.0.1:{external_port}/v1"},
-                    connections=[{"id": "fixture", "name": "Fixture", "url": f"http://127.0.0.1:{external_port}/mcp", "credential": "mcp-fixture"}])
-                assert client.put("/api/voice/v1/executor/settings", json=executor.model_dump(), headers=headers).status_code == 200
-                assert client.put("/api/voice/v1/credentials/mcp-fixture", json={"secret": bearer}, headers=headers).status_code == 200
+                headers = {
+                    "Origin": config.public_url,
+                    "X-CSRF-Token": client.get("/api/session").json()["csrfToken"],
+                }
+                executor = ExecutorSettings(
+                    enabled=True,
+                    llm={
+                        "model": "fixture-executor",
+                        "baseUrl": f"http://127.0.0.1:{external_port}/v1",
+                    },
+                    connections=[
+                        {
+                            "id": "fixture",
+                            "name": "Fixture",
+                            "url": f"http://127.0.0.1:{external_port}/mcp",
+                            "credential": "mcp-fixture",
+                        }
+                    ],
+                )
+                assert (
+                    client.put(
+                        "/api/voice/v1/executor/settings",
+                        json=executor.model_dump(),
+                        headers=headers,
+                    ).status_code
+                    == 200
+                )
+                assert (
+                    client.put(
+                        "/api/voice/v1/credentials/mcp-fixture",
+                        json={"secret": bearer},
+                        headers=headers,
+                    ).status_code
+                    == 200
+                )
                 assert bearer not in client.get("/api/voice/v1/credentials").text
-                assert client.post("/api/voice/v1/executor/test", headers=headers).json()["selectedModelAvailable"]
-                assert client.post("/api/voice/v1/executor/connections/fixture/connect", headers=headers).status_code == 200
+                assert client.post("/api/voice/v1/executor/test", headers=headers).json()[
+                    "selectedModelAvailable"
+                ]
+                assert (
+                    client.post(
+                        "/api/voice/v1/executor/connections/fixture/connect", headers=headers
+                    ).status_code
+                    == 200
+                )
                 assert tool_calls == [] and llm_requests == []
-                with client.websocket_connect("wss://voice.test/voice/v1/ws", headers={"Origin": config.public_url, "Cookie": f"{COOKIE}={token}"}) as wire:
+                with client.websocket_connect(
+                    "wss://voice.test/voice/v1/ws",
+                    headers={"Origin": config.public_url, "Cookie": f"{COOKIE}={token}"},
+                ) as wire:
                     wire.send_json({"type": "session.start", "version": 1})
                     ready = wire.receive_json()
                     assert ready["capabilities"]["executor"] and ready["settingsRevision"] == 3
                     session_id = ready["sessionId"]
                     control = {"sessionId": session_id, "turnId": 1}
                     wire.send_json({**control, "type": "turn.start"})
-                    wire.send_json({**control, "type": "input.audio", "audio": base64.b64encode(b"\x00\x00" * 160).decode()})
+                    wire.send_json(
+                        {
+                            **control,
+                            "type": "input.audio",
+                            "audio": base64.b64encode(b"\x00\x00" * 160).decode(),
+                        }
+                    )
                     wire.send_json({**control, "type": "turn.commit"})
                     events = []
                     for _ in range(20):
                         event = wire.receive_json()
                         events.append(event)
-                        if event["type"] == "task.updated" and event["task"]["state"] == "succeeded":
+                        if (
+                            event["type"] == "task.updated"
+                            and event["task"]["state"] == "succeeded"
+                        ):
                             break
                     else:
                         pytest.fail("Executor did not finish the fixture task")
@@ -135,18 +261,46 @@ def test_lfm3_transcript_executor_dependent_mcp_calls_and_browser_ownership(conf
                     assert tool_calls[1]["arguments"] == {"id": "authoritative-id", "revision": 19}
                     assert len(tool_calls) == 2
                     assert any(event.get("text") == transcript for event in events)
-                    assert [event["sequence"] for event in events] == sorted(set(event["sequence"] for event in events))
+                    assert [event["sequence"] for event in events] == sorted(
+                        set(event["sequence"] for event in events)
+                    )
                     path = f"/api/voice/v1/sessions/{session_id}/tasks/{task_id}"
                     detail = client.get(path)
-                    assert detail.json()["transcript"] == transcript and detail.json()["state"] == "succeeded"
+                    assert (
+                        detail.json()["transcript"] == transcript
+                        and detail.json()["state"] == "succeeded"
+                    )
                     assert bearer not in detail.text and "[redacted]" in detail.text
-                    other_token = app.state.sessions.create(config.owner_email, "another-device", config.public_url)
+                    other_token = app.state.sessions.create(
+                        config.owner_email, "another-device", config.public_url
+                    )
                     client.cookies.set(COOKIE, other_token, domain="voice.test", path="/")
-                    assert client.get(path, headers={"X-NoX-Session-Owner": next(iter(manager.executor.stores.values())).owner}).status_code == 404
+                    assert (
+                        client.get(
+                            path,
+                            headers={
+                                "X-NoX-Session-Owner": next(
+                                    iter(manager.executor.stores.values())
+                                ).owner
+                            },
+                        ).status_code
+                        == 404
+                    )
                     client.cookies.set(COOKIE, token, domain="voice.test", path="/")
-                    wire.send_json({"type": "speech.request", "sessionId": session_id, "playbackId": 1, "text": "Feito."})
+                    wire.send_json(
+                        {
+                            "type": "speech.request",
+                            "sessionId": session_id,
+                            "playbackId": 1,
+                            "text": "Feito.",
+                        }
+                    )
                     speech = [wire.receive_json() for _ in range(3)]
-                    assert [event["type"] for event in speech] == ["speech.started", "speech.audio", "speech.ended"]
+                    assert [event["type"] for event in speech] == [
+                        "speech.started",
+                        "speech.audio",
+                        "speech.ended",
+                    ]
 
 
 @contextmanager
@@ -175,18 +329,20 @@ def running(app, **options):
 
 def test_clear_download_history_through_gateway_and_real_mtls(config, tmp_path):
     bundle = create_certificates(tmp_path / "tls", "127.0.0.1")
-    native_config = ControllerConfig(
-        data_dir=tmp_path / "native", weights_dir=tmp_path / "weights"
-    )
+    native_config = ControllerConfig(data_dir=tmp_path / "native", weights_dir=tmp_path / "weights")
     manager = Supervisor(native_config)
     model = native_config.weights_dir / "lfm3-audio/models/model.gguf"
     model.parent.mkdir(parents=True)
     model.write_bytes(b"model fixture must survive clearing history")
     manager.library.jobs["finished"] = {
-        "id": "finished", "provider": "lfm3-audio", "state": "completed"
+        "id": "finished",
+        "provider": "lfm3-audio",
+        "state": "completed",
     }
     manager.library.jobs["active"] = {
-        "id": "active", "provider": "personaplex", "state": "downloading"
+        "id": "active",
+        "provider": "personaplex",
+        "state": "downloading",
     }
     manager.library.save(True)
     with running(
@@ -245,7 +401,13 @@ def test_browser_gateway_mtls_controller_and_private_worker(config, tmp_path, ve
         await websocket.accept()
         try:
             assert await websocket.receive_json() == {"type": "session.start", "version": 1}
-            await websocket.send_json({"type": "session.ready", "sessionId": "fixture", "capabilities": {"executor": False}})
+            await websocket.send_json(
+                {
+                    "type": "session.ready",
+                    "sessionId": "fixture",
+                    "capabilities": {"executor": False},
+                }
+            )
             while True:
                 await websocket.send_json(await websocket.receive_json())
         except WebSocketDisconnect:

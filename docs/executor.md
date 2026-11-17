@@ -77,16 +77,16 @@ are validated by the models in `mac/controller/executor/config.py`. PUT carries
 the full settings document with `schemaVersion: 1` and the expected `revision`;
 conflicts return 409. No secrets belong in URLs or settings values.
 
-| Route | Behavior |
-| --- | --- |
-| `GET /api/voice/v1/executor/settings` | Saved executor profile and effective budgets |
-| `PUT /api/voice/v1/executor/settings` | Explicit revisioned save; no network/tool execution |
-| `POST /api/voice/v1/executor/test` | List models using saved LLM endpoint/auth |
-| `GET /api/voice/v1/executor/connections` | Connected identities and discovered tool availability |
-| `POST /api/voice/v1/executor/connections/{id}/{connect\|disconnect\|refresh\|test}` | Explicit connection/catalogue operation, never a business tool |
-| `GET /api/voice/v1/sessions/{sessionId}/tasks` | Refreshable in-memory activity for its authenticated owner |
-| `GET /api/voice/v1/sessions/{sessionId}/tasks/{taskId}` | Full task and receipt data for that owner |
-| `POST /api/voice/v1/sessions/{sessionId}/tasks/{taskId}/cancel` | Cooperative cancellation, with actual admitted outcomes retained |
+| Route                                                                               | Behavior                                                         |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `GET /api/voice/v1/executor/settings`                                               | Saved executor profile and effective budgets                     |
+| `PUT /api/voice/v1/executor/settings`                                               | Explicit revisioned save; no network/tool execution              |
+| `POST /api/voice/v1/executor/test`                                                  | List models using saved LLM endpoint/auth                        |
+| `GET /api/voice/v1/executor/connections`                                            | Connected identities and discovered tool availability            |
+| `POST /api/voice/v1/executor/connections/{id}/{connect\|disconnect\|refresh\|test}` | Explicit connection/catalogue operation, never a business tool   |
+| `GET /api/voice/v1/sessions/{sessionId}/tasks`                                      | Refreshable in-memory activity for its authenticated owner       |
+| `GET /api/voice/v1/sessions/{sessionId}/tasks/{taskId}`                             | Full task and receipt data for that owner                        |
+| `POST /api/voice/v1/sessions/{sessionId}/tasks/{taskId}/cancel`                     | Cooperative cancellation, with actual admitted outcomes retained |
 
 Session/task IDs are 32 hexadecimal characters. The gateway derives an opaque
 owner from the authenticated browser session; it ignores browser-supplied owner

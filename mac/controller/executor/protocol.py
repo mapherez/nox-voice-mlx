@@ -27,7 +27,9 @@ def encode(value):
 
 async def json_http(client, method, url, *, body=None, headers=None, timeout=120):
     async with asyncio.timeout(timeout):
-        async with client.stream(method, url, json=body, headers=headers, timeout=timeout) as response:
+        async with client.stream(
+            method, url, json=body, headers=headers, timeout=timeout
+        ) as response:
             if response.status_code >= 300:
                 raise ExecutionError(f"Endpoint returned HTTP {response.status_code}.")
             if response.headers.get("content-type", "").split(";", 1)[0] != "application/json":
@@ -81,8 +83,14 @@ class MCPClient:
         if "error" in message:
             # Remote error text can contain credentials or content; retain a safe code only.
             code = message["error"].get("code") if isinstance(message["error"], dict) else None
-            error_type = RejectedCall if type(code) is int and code in {-32700, -32600, -32601, -32602} else ExecutionError
-            raise error_type(f"MCP request rejected (code {code if type(code) is int else 'unknown'}).")
+            error_type = (
+                RejectedCall
+                if type(code) is int and code in {-32700, -32600, -32601, -32602}
+                else ExecutionError
+            )
+            raise error_type(
+                f"MCP request rejected (code {code if type(code) is int else 'unknown'})."
+            )
         if not isinstance(message.get("result"), dict):
             raise ExecutionError("MCP returned no valid result object.")
         return message["result"]
@@ -92,13 +100,25 @@ class MCPClient:
         if self.session:
             headers["Mcp-Session-Id"] = self.session
         async with asyncio.timeout(self.settings.timeoutSeconds):
-            async with self.client.stream("POST", self.settings.url, json=message,
-                    headers=headers, timeout=self.settings.timeoutSeconds) as response:
+            async with self.client.stream(
+                "POST",
+                self.settings.url,
+                json=message,
+                headers=headers,
+                timeout=self.settings.timeoutSeconds,
+            ) as response:
                 if response.status_code >= 300:
-                    raise ExecutionError(f"MCP returned HTTP {response.status_code}. Reconnect to test access.")
+                    raise ExecutionError(
+                        f"MCP returned HTTP {response.status_code}. Reconnect to test access."
+                    )
                 session = response.headers.get("mcp-session-id")
                 if session is not None:
-                    if not session or len(session) > 1024 or not session.isascii() or any(ord(c) < 33 or ord(c) > 126 for c in session):
+                    if (
+                        not session
+                        or len(session) > 1024
+                        or not session.isascii()
+                        or any(ord(c) < 33 or ord(c) > 126 for c in session)
+                    ):
                         raise ExecutionError("MCP returned an invalid session identity.")
                     self.session = session
                 if "id" not in message:
@@ -129,11 +149,15 @@ class MCPClient:
                             parts.append(line[5:].removeprefix(" "))
                         elif not line:
                             if parts and "\n".join(parts).strip():
-                                value = await self.message(json.loads("\n".join(parts)), message["id"])
+                                value = await self.message(
+                                    json.loads("\n".join(parts)), message["id"]
+                                )
                                 if value is not None:
                                     return value
                             parts = []
-                raise ExecutionError("MCP stream ended without a confirmed response. No automatic replay.")
+                raise ExecutionError(
+                    "MCP stream ended without a confirmed response. No automatic replay."
+                )
 
     async def rpc(self, method, params=None):
         self.counter += 1
@@ -149,13 +173,26 @@ class MCPClient:
         try:
             return await self._connect()
         except (httpx.HTTPError, TimeoutError, ValueError, UnicodeError, RecursionError):
-            raise ExecutionError("MCP initialization or discovery failed. No business tool was called.") from None
+            raise ExecutionError(
+                "MCP initialization or discovery failed. No business tool was called."
+            ) from None
 
     async def _connect(self):
-        result = await self.rpc("initialize", {"protocolVersion": self.version,
-            "capabilities": {}, "clientInfo": {"name": "nox-voice", "version": "0.1.0"}})
-        if (not result or result.get("protocolVersion") not in VERSIONS or not isinstance(result.get("serverInfo"), dict)
-                or not isinstance(result["serverInfo"].get("name"), str) or not isinstance(result["serverInfo"].get("version"), str)):
+        result = await self.rpc(
+            "initialize",
+            {
+                "protocolVersion": self.version,
+                "capabilities": {},
+                "clientInfo": {"name": "nox-voice", "version": "0.1.0"},
+            },
+        )
+        if (
+            not result
+            or result.get("protocolVersion") not in VERSIONS
+            or not isinstance(result.get("serverInfo"), dict)
+            or not isinstance(result["serverInfo"].get("name"), str)
+            or not isinstance(result["serverInfo"].get("version"), str)
+        ):
             raise ExecutionError("MCP negotiated an unsupported protocol or server identity.")
         self.version, self.identity = result["protocolVersion"], result["serverInfo"]
         self.capabilities = result.get("capabilities", {})
@@ -180,27 +217,49 @@ class MCPClient:
     async def call(self, name, arguments, invocation_id):
         # The invocation ledger is in the service, never retried at transport level.
         try:
-            return await self.rpc("tools/call", {"name": name, "arguments": arguments,
-                "_meta": {"progressToken": invocation_id}})
+            return await self.rpc(
+                "tools/call",
+                {"name": name, "arguments": arguments, "_meta": {"progressToken": invocation_id}},
+            )
         except RejectedCall:
             raise
         except ExecutionError:
-            raise OutcomeUnknown("No confirmed tool result. The action may have completed; it will not be retried.") from None
+            raise OutcomeUnknown(
+                "No confirmed tool result. The action may have completed; it will not be retried."
+            ) from None
 
     async def cancel(self):
         from contextlib import suppress
 
         with suppress(Exception):
-            await asyncio.wait_for(self.post({"jsonrpc": "2.0", "method": "notifications/cancelled",
-                "params": {"requestId": self.counter, "reason": "Conversation or task ended."}}), timeout=2)
+            await asyncio.wait_for(
+                self.post(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "notifications/cancelled",
+                        "params": {
+                            "requestId": self.counter,
+                            "reason": "Conversation or task ended.",
+                        },
+                    }
+                ),
+                timeout=2,
+            )
 
     async def close(self):
         from contextlib import suppress
 
         if self.session:
             with suppress(Exception):
-                await self.client.delete(self.settings.url, headers={**self.headers,
-                    "Mcp-Session-Id": self.session, "MCP-Protocol-Version": self.version}, timeout=2)
+                await self.client.delete(
+                    self.settings.url,
+                    headers={
+                        **self.headers,
+                        "Mcp-Session-Id": self.session,
+                        "MCP-Protocol-Version": self.version,
+                    },
+                    timeout=2,
+                )
             self.session = None
         if self.owns_client:
             await self.client.aclose()

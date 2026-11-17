@@ -41,23 +41,53 @@ PREVIEW_CONFIG = ControllerConfig(
     data_dir=ROOT.parents[1] / ".tmp" / "preview",
     weights_dir=ROOT.parents[1] / ".tmp" / "preview" / "weights",
 )
-MODELS = {key: {"id": key, "name": adapter.name, "runtime": adapter.runtime,
-    "source": f"https://huggingface.co/{adapter.model_id}", "revision": "a" * 40,
-    "downloadBytes": 2_433_548_178 if key == "lfm3-audio" else 17_200_000_000,
-    "sizeApproximate": key == "personaplex", "credentialService": "huggingface" if key == "personaplex" else None,
-    "localState": "present" if key == "personaplex" else "not_downloaded", "loaded": False}
-    for key, adapter in PROVIDERS.items()}
+MODELS = {
+    key: {
+        "id": key,
+        "name": adapter.name,
+        "runtime": adapter.runtime,
+        "source": f"https://huggingface.co/{adapter.model_id}",
+        "revision": "a" * 40,
+        "downloadBytes": 2_433_548_178 if key == "lfm3-audio" else 17_200_000_000,
+        "sizeApproximate": key == "personaplex",
+        "credentialService": "huggingface" if key == "personaplex" else None,
+        "localState": "present" if key == "personaplex" else "not_downloaded",
+        "loaded": False,
+    }
+    for key, adapter in PROVIDERS.items()
+}
 JOBS = []
-CREDENTIAL = {"id": "huggingface", "name": "Hugging Face", "fieldLabel": "Access token",
+CREDENTIAL = {
+    "id": "huggingface",
+    "name": "Hugging Face",
+    "fieldLabel": "Access token",
     "help": "Read access is sufficient. Accept PersonaPlex access terms before downloading.",
-    "tokenUrl": "https://huggingface.co/settings/tokens", "accessUrl": "https://huggingface.co/nvidia/personaplex-7b-v1",
-    "configured": False, "test": None}
+    "tokenUrl": "https://huggingface.co/settings/tokens",
+    "accessUrl": "https://huggingface.co/nvidia/personaplex-7b-v1",
+    "configured": False,
+    "test": None,
+}
 
 
 def fixture_download(provider_id):
-    job = {"id": f"{len(JOBS) + 1:024x}", "provider": provider_id, "name": MODELS[provider_id]["name"],
-        "state": "downloading", "files": [{"name": "fixture-model.gguf", "totalBytes": 1000, "downloadedBytes": 250, "state": "downloading"}],
-        "downloadedBytes": 250, "totalBytes": 1000, "bytesPerSecond": 300, "error": None}
+    job = {
+        "id": f"{len(JOBS) + 1:024x}",
+        "provider": provider_id,
+        "name": MODELS[provider_id]["name"],
+        "state": "downloading",
+        "files": [
+            {
+                "name": "fixture-model.gguf",
+                "totalBytes": 1000,
+                "downloadedBytes": 250,
+                "state": "downloading",
+            }
+        ],
+        "downloadedBytes": 250,
+        "totalBytes": 1000,
+        "bytesPerSecond": 300,
+        "error": None,
+    }
     JOBS.append(job)
 
     def complete():
@@ -130,23 +160,45 @@ class Preview(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         if self.path == "/api/voice/v1/executor/test":
-            self.json({"models": ["fixture-executor"], "selectedModelAvailable": EXECUTOR["llm"]["model"] == "fixture-executor", "message": "Fixture endpoint reachable; no tool executed."})
+            self.json(
+                {
+                    "models": ["fixture-executor"],
+                    "selectedModelAvailable": EXECUTOR["llm"]["model"] == "fixture-executor",
+                    "message": "Fixture endpoint reachable; no tool executed.",
+                }
+            )
             return
         if self.path.startswith("/api/voice/v1/executor/connections/"):
             connection_id, action = self.path.split("/")[-2:]
             profile = next(item for item in EXECUTOR["connections"] if item["id"] == connection_id)
             CONNECTIONS[:] = [item for item in CONNECTIONS if item["id"] != connection_id]
             if action != "disconnect":
-                CONNECTIONS.append({"id": connection_id, "name": profile["name"], "connected": True,
-                    "identity": "fixture-catalogue", "server": {"name": "Generic fixture", "version": "1"},
-                    "tools": [{"name": "search.anything", "title": "Search anything", "supported": True}]})
+                CONNECTIONS.append(
+                    {
+                        "id": connection_id,
+                        "name": profile["name"],
+                        "connected": True,
+                        "identity": "fixture-catalogue",
+                        "server": {"name": "Generic fixture", "version": "1"},
+                        "tools": [
+                            {
+                                "name": "search.anything",
+                                "title": "Search anything",
+                                "supported": True,
+                            }
+                        ],
+                    }
+                )
             self.json({"connections": CONNECTIONS})
             return
         if self.path.endswith("/open-folder"):
             self.json({"message": "Folder opened in Finder on the controller Mac."})
             return
         if self.path == "/api/voice/v1/credentials/huggingface/test":
-            CREDENTIAL["test"] = {"state": "valid", "message": "Token valid. PersonaPlex download access confirmed."}
+            CREDENTIAL["test"] = {
+                "state": "valid",
+                "message": "Token valid. PersonaPlex download access confirmed.",
+            }
             self.json(CREDENTIAL["test"])
             return
         if self.path == "/api/voice/v1/downloads":
@@ -205,7 +257,9 @@ class Preview(SimpleHTTPRequestHandler):
 
     def do_PUT(self):
         if self.path == "/api/voice/v1/executor/settings":
-            value = ExecutorSettings.model_validate_json(self.rfile.read(int(self.headers["Content-Length"])))
+            value = ExecutorSettings.model_validate_json(
+                self.rfile.read(int(self.headers["Content-Length"]))
+            )
             if value.revision != EXECUTOR["revision"]:
                 self.json({"error": "Executor settings changed. Reload before saving."}, 409)
                 return
@@ -215,7 +269,9 @@ class Preview(SimpleHTTPRequestHandler):
             self.json(EXECUTOR)
             return
         if self.path == "/api/voice/v1/credentials/huggingface":
-            self.rfile.read(int(self.headers["Content-Length"]))  # Never retain even fixture tokens.
+            self.rfile.read(
+                int(self.headers["Content-Length"])
+            )  # Never retain even fixture tokens.
             CREDENTIAL.update(configured=True, test=None)
             self.json({"services": [CREDENTIAL]})
             return
@@ -232,7 +288,9 @@ class Preview(SimpleHTTPRequestHandler):
             if PROFILES["selectedProvider"] != value.selectedProvider:
                 STATE.update(state="stopped", phase="Stopped", activeProvider=None)
                 STATE["modelFilesMissing"] = (
-                    ["fixture-model"] if MODELS[value.selectedProvider]["localState"] == "not_downloaded" else []
+                    ["fixture-model"]
+                    if MODELS[value.selectedProvider]["localState"] == "not_downloaded"
+                    else []
                 )
             PROFILES.update(value.document())
             STATE["selectedProvider"] = PROFILES["selectedProvider"]
@@ -250,7 +308,12 @@ class Preview(SimpleHTTPRequestHandler):
 
     def do_DELETE(self):
         if self.path == "/api/voice/v1/downloads":
-            JOBS[:] = [job for job in JOBS if job["state"] in {"queued", "resolving", "downloading", "verifying", "extracting", "cancelling"}]
+            JOBS[:] = [
+                job
+                for job in JOBS
+                if job["state"]
+                in {"queued", "resolving", "downloading", "verifying", "extracting", "cancelling"}
+            ]
             self.json({"jobs": JOBS})
         elif self.path == "/api/voice/v1/credentials/huggingface":
             CREDENTIAL.update(configured=False, test=None)

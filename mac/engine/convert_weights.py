@@ -195,7 +195,11 @@ def remap_to_mlx(
             elif "norm1.alpha" in name or "norm2.alpha" in name:
                 # Norms are shared, replicate to all slices
                 norm_type = "norm1" if "norm1" in name else "norm2"
-                squeezed = tensor[0, 0] if tensor.ndim == 3 else (tensor[0] if tensor.ndim == 2 else tensor)
+                squeezed = (
+                    tensor[0, 0]
+                    if tensor.ndim == 3
+                    else (tensor[0] if tensor.ndim == 2 else tensor)
+                )
                 for slice_idx in range(num_depformer_slices):
                     out_name = f"depformer.slices.{slice_idx}.transformer.layers.{layer_idx}.{norm_type}.weight"
                     mlx_weights[out_name] = squeezed

@@ -41,8 +41,7 @@ class PersonaPlexLm(nn.Module):
             demux_second_stream=cfg.demux_second_stream,
         )
         self.audio_embs = [
-            ScaledEmbedding(cfg.audio_vocab_size, dim)
-            for _ in range(cfg.audio_codebooks)
+            ScaledEmbedding(cfg.audio_vocab_size, dim) for _ in range(cfg.audio_codebooks)
         ]
 
         # Output layers

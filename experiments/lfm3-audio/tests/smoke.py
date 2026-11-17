@@ -18,9 +18,11 @@ class WebSocket:
         self.connection = socket.create_connection(("127.0.0.1", port), timeout=90)
         self.source = self.connection.makefile("rb")
         key = base64.b64encode(os.urandom(16)).decode()
-        request = ("GET /realtime HTTP/1.1\r\nHost: localhost:{0}\r\n"
-                   "Origin: http://localhost:{0}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-                   "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {1}\r\n\r\n").format(port, key)
+        request = (
+            "GET /realtime HTTP/1.1\r\nHost: localhost:{0}\r\n"
+            "Origin: http://localhost:{0}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+            "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {1}\r\n\r\n"
+        ).format(port, key)
         self.connection.sendall(request.encode())
         status = self.source.readline().decode().strip()
         if "101" not in status:
@@ -33,8 +35,9 @@ class WebSocket:
                 break
             name, value = line.split(":", 1)
             headers[name.lower()] = value.strip()
-        expected = base64.b64encode(hashlib.sha1(
-            (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest()).decode()
+        expected = base64.b64encode(
+            hashlib.sha1((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest()
+        ).decode()
         if headers.get("sec-websocket-accept") != expected:
             raise RuntimeError("Invalid WebSocket handshake.")
 
@@ -89,9 +92,18 @@ class WebSocket:
 
     def session(self, instructions, modalities):
         assert self.receive()["type"] == "session.created"
-        self.send({"type": "session.update", "session": {
-            "type": "realtime", "instructions": instructions,
-            "output_modalities": modalities, "max_output_tokens": 512, "tool_choice": "none"}})
+        self.send(
+            {
+                "type": "session.update",
+                "session": {
+                    "type": "realtime",
+                    "instructions": instructions,
+                    "output_modalities": modalities,
+                    "max_output_tokens": 512,
+                    "tool_choice": "none",
+                },
+            }
+        )
         assert self.receive()["type"] == "session.updated"
 
     def response_details(self):
@@ -125,16 +137,30 @@ def main(port):
     client = WebSocket(port)
     try:
         client.session("Perform TTS in American English using a female voice.", ["audio"])
-        client.send({"type": "conversation.item.create", "item": {
-            "type": "message", "role": "user", "content": [
-                {"type": "input_text", "text": "What color is the sky on a clear day?"}]}})
+        client.send(
+            {
+                "type": "conversation.item.create",
+                "item": {
+                    "type": "message",
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": "What color is the sky on a clear day?"}
+                    ],
+                },
+            }
+        )
         client.send({"type": "response.create"})
         _, question = client.response()
         assert len(question) > 24000, "No synthesized question audio."
-        print("TTS generated {:.2f} seconds of synthetic question audio.".format(len(question) / 48000), flush=True)
+        print(
+            "TTS generated {:.2f} seconds of synthetic question audio.".format(
+                len(question) / 48000
+            ),
+            flush=True,
+        )
     finally:
         client.close()
-    time.sleep(.5)  # Let the runtime release its single conversation slot.
+    time.sleep(0.5)  # Let the runtime release its single conversation slot.
     client = WebSocket(port)
     try:
         client.session("Respond with interleaved text and audio.", ["text", "audio"])
@@ -142,16 +168,26 @@ def main(port):
         samples = struct.unpack("<" + "h" * (len(question) // 2), question)
         pcm = bytearray()
         for index in range(0, len(samples) - 2, 3):
-            a, b, c = samples[index:index + 3]
+            a, b, c = samples[index : index + 3]
             pcm.extend(struct.pack("<hh", round((2 * a + b) / 3), round((b + 2 * c) / 3)))
         for start in range(0, len(pcm), 3200):
-            client.send({"type": "input_audio_buffer.append", "audio": base64.b64encode(pcm[start:start + 3200]).decode()})
+            client.send(
+                {
+                    "type": "input_audio_buffer.append",
+                    "audio": base64.b64encode(pcm[start : start + 3200]).decode(),
+                }
+            )
         client.send({"type": "response.create"})
         text, audio = client.response()
         assert text.strip(), "No response text."
         assert len(audio) > 24000, "No spoken reply."
         print("Speech-to-speech reply: " + text, flush=True)
-        print("Generated {:.2f} seconds of reply audio. No audio was saved.".format(len(audio) / 48000), flush=True)
+        print(
+            "Generated {:.2f} seconds of reply audio. No audio was saved.".format(
+                len(audio) / 48000
+            ),
+            flush=True,
+        )
     finally:
         client.close()
 

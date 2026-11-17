@@ -239,25 +239,25 @@ suite. See [port history](original-port.md) for its context.
 
 Use the actual model, identity provider configuration and target devices:
 
-| Area             | Verify                                                                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ |
-| Access           | Localhost remains usable with and without the optional external route                                        |
-| Multiple origins | Local and configured HTTPS logins return to their starting address; both can remain signed in simultaneously |
-| Authentication   | The configured verified account succeeds and a different account is rejected                                 |
-| Transport        | A valid client bundle connects; missing, incorrect or expired certificates fail                              |
-| Lifecycle        | Repeated Start creates one worker; Stop cancels loading and releases model memory                            |
-| Isolation        | A second conversation cannot reset or modify the active conversation                                         |
-| Settings         | Voice, persona and precision changes work while idle; active conversations block changes                     |
+| Area             | Verify                                                                                                                        |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Access           | Localhost remains usable with and without the optional external route                                                         |
+| Multiple origins | Local and configured HTTPS logins return to their starting address; both can remain signed in simultaneously                  |
+| Authentication   | The configured verified account succeeds and a different account is rejected                                                  |
+| Transport        | A valid client bundle connects; missing, incorrect or expired certificates fail                                               |
+| Lifecycle        | Repeated Start creates one worker; Stop cancels loading and releases model memory                                             |
+| Isolation        | A second conversation cannot reset or modify the active conversation                                                          |
+| Settings         | Voice, persona and precision changes work while idle; active conversations block changes                                      |
 | Downloads        | Both models download with progress, cancel/resume and verification; errors identify credentials, terms, network or disk space |
-| Model memory     | Download/save never load inference; Load/Eject manage only owned workers and preserve files |
-| Credentials      | Save/test/replace/remove work; reads, validation errors and logs never expose the secret |
-| Native folders   | Open folder launches Finder on the controller Mac; missing graphical login has actionable feedback |
-| Audio            | Capture, mute, interruption and playback work on the intended desktop and mobile browsers                    |
-| Visualization    | Only assistant playback drives the sphere; microphone input does not                                         |
-| Accessibility    | Drawer keyboard/focus, themes, narrow layouts, reduced motion and WebGL fallback work                        |
-| Recovery         | Disconnects, backgrounding, logout and device locking stop capture and require an explicit new start         |
-| Network          | Long calls keep bounded queues and acceptable latency on each enabled route                                  |
-| Privacy          | Persistent files and logs contain no conversation audio, transcripts or credentials                          |
+| Model memory     | Download/save never load inference; Load/Eject manage only owned workers and preserve files                                   |
+| Credentials      | Save/test/replace/remove work; reads, validation errors and logs never expose the secret                                      |
+| Native folders   | Open folder launches Finder on the controller Mac; missing graphical login has actionable feedback                            |
+| Audio            | Capture, mute, interruption and playback work on the intended desktop and mobile browsers                                     |
+| Visualization    | Only assistant playback drives the sphere; microphone input does not                                                          |
+| Accessibility    | Drawer keyboard/focus, themes, narrow layouts, reduced motion and WebGL fallback work                                         |
+| Recovery         | Disconnects, backgrounding, logout and device locking stop capture and require an explicit new start                          |
+| Network          | Long calls keep bounded queues and acceptable latency on each enabled route                                                   |
+| Privacy          | Persistent files and logs contain no conversation audio, transcripts or credentials                                           |
 
 Microphone access requires a secure browser context: localhost or trusted HTTPS.
 Measure quality in the languages intended for deployment. The official model

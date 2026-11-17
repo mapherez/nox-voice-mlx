@@ -100,7 +100,13 @@ def test_private_host_secrets_work_without_chown_or_chmod(tmp_path):
         assert fields["NoNewPrivs"].strip() == "1"
 
         # Check the actual gateway-served React shell and its production assets.
-        assets = json.loads(docker("exec", container, "python", "-c", """
+        assets = json.loads(
+            docker(
+                "exec",
+                container,
+                "python",
+                "-c",
+                """
 import json, re, urllib.request
 origin = 'http://127.0.0.1:8080'
 page = urllib.request.urlopen(origin + '/').read().decode()
@@ -113,9 +119,13 @@ for path in paths:
     assert response.status == 200 and response.read()
     results.append([path, response.headers.get_content_type()])
 print(json.dumps(results))
-"""))
-        assert any(path.endswith(".js") and kind in {"text/javascript", "application/javascript"}
-            for path, kind in assets)
+""",
+            )
+        )
+        assert any(
+            path.endswith(".js") and kind in {"text/javascript", "application/javascript"}
+            for path, kind in assets
+        )
         assert any(path.endswith(".css") and kind == "text/css" for path, kind in assets)
 
         for path, (before, contents) in snapshots.items():
