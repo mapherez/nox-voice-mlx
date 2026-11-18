@@ -49,6 +49,7 @@ jobs:
           node-version: "26"
           package-manager-cache: false
       - run: node --test scripts/ci-policy.test.mjs scripts/release.test.mjs
+      - run: node --test scripts/audit-security.test.mjs
 
   checks:
     needs: plan
@@ -71,7 +72,7 @@ jobs:
       - run: uv run --frozen pip-audit --skip-editable --progress-spinner off
       - run: npm ci
         working-directory: frontend
-      - run: npm audit --audit-level=high
+      - run: npm run audit:security
         working-directory: frontend
       - run: npm test
         working-directory: frontend

@@ -27,7 +27,7 @@ npm ci
 npm run check
 npm test
 npm run build
-npm audit --audit-level=high
+npm run audit:security
 ```
 
 The project-local Vite+ toolchain runs formatting, lint, React/hooks/accessibility
@@ -46,6 +46,19 @@ mutual TLS transport, process lifecycle, model-asset validation and continuous
 audio resampling. Provider and model mocks do not replace real deployment tests.
 Dependency audits report known advisories at execution time, not a guarantee
 that all code is free of vulnerabilities.
+
+`audit:security` runs the full npm audit and blocks high/critical advisories.
+Until **2026-12-02 00:00 UTC**, it permits only
+[GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
+in **picomatch 4.0.7**, including parent warnings caused solely by that advisory,
+provided every affected package is marked development-only in the lockfile.
+Picomatch is used by Vite+/Vitest tooling; the production image copies the built
+frontend assets into the Python gateway without that tooling. This exception
+does not patch the dependency. It is printed on every affected audit run and
+stops applying at expiry, if an affected package becomes a production dependency,
+or if another advisory is reported. Network errors and incomplete audit reports
+also block CI. Remove the exception once a corrected dependency is available;
+use raw `npm audit --audit-level=high` to inspect the unfiltered report.
 
 The [multi-model stages](voice-engine-contract.md#14-implementation-sequence-and-acceptance)
 cover independent profiles, revision conflicts, PersonaPlex streaming, provider
